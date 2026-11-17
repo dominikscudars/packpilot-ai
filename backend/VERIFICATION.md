@@ -1,4 +1,22 @@
-# Backend verification
+# Phase 2 authentication verification
+
+Executed locally on November 17, 2026 with Node.js 24.22.1.
+
+- Prisma client generation passed; the additive company-membership migration applied successfully to the existing development database. Original calculation/business tables and inputs were preserved.
+- Backend `npm run typecheck`, `npm test` (**186 tests across 5 files**), and `npm run build`: passed.
+- Frontend `npm run typecheck`, `npm test` (**44 tests**), and `npm run build`: passed. No frontend source, calculation-engine source or pure calculation tests changed.
+- Auth tests generate temporary signing keys and test real JWT signatures/claims. They cover missing/malformed/expired tokens, wrong issuer/audience, unknown keys, unsupported algorithms, anonymous/service-role claims, every company route, calculators, filtered lists, membership roles/revocation, final-owner protection, bootstrap restrictions and exact-origin CORS.
+- Supabase verification tests mock only the configured JWKS HTTP transport and verify signed tokens using jose. No live Supabase credentials, project or service calls were used.
+- `auth:setup`, initial-owner bootstrap and local token generation ran successfully. Signing keys are confined to ignored `.auth/`; no tokens or private keys were printed during smoke verification or committed.
+- Started the compiled server and checked actual HTTP responses: public health 200; missing token 401; other-company access 404; authorized company read 200 with the expected CORS header; authenticated reference calculation 200 with €286; unapproved origin 403. Graceful shutdown completed.
+- Starting the compiled server with production environment and local authentication exited unsuccessfully as required.
+- `git diff --check`: passed. New-file staging is also checked before commit.
+
+Not performed: live Supabase project setup/sign-in/refresh testing, public deployment, frontend authentication integration, PostgreSQL execution or Auth-session introspection. Configure and validate those requirements before production use; see AUTHENTICATION.md. No PR was merged and no service was deployed.
+
+---
+
+# Phase 1 verification history
 
 Executed locally on November 17, 2026 with Node.js 24.22.1.
 

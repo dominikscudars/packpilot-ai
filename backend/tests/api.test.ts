@@ -1,3 +1,6 @@
+import { createAuthFixture, OWNER } from "./authFixture.js";
+import { bootstrapOwner } from "../src/auth/bootstrap.js";
+import type { InjectOptions } from "fastify";
 import { afterAll, beforeAll, describe, it, expect } from "vitest";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -9,8 +12,15 @@ import { seedDemo } from "../src/shared/seedDemo.js";
 import { createDemoScenario } from "../src/domain/demo.js";
 import { assumed } from "../src/domain/inputs.js";
 import { formatSchema, inventoryRecordSchema } from "../src/domain/entities.js";
-import { loadConfig } from "../src/config/env.js";
+import { loadServerConfig } from "../src/config/env.js";
+let accessToken: string;
 let directory: string;
+function authenticatedInject(options: InjectOptions) {
+  return app.inject({
+    ...options,
+    headers: { authorization: `Bearer ${accessToken}`, ...options.headers },
+  });
+}
 let db: PrismaClient;
 let app: ReturnType<typeof buildApp>;
 const q = (v: string) => assumed(v, "Integration test assumption");
@@ -24,7 +34,10 @@ beforeAll(async () => {
   });
   db = new PrismaClient({ datasourceUrl: databaseUrl });
   await seedDemo(db);
-  app = buildApp(db);
+  const fixture = await createAuthFixture();
+  accessToken = await fixture.token();
+  await bootstrapOwner(db, "og-tofu", OWNER);
+  app = buildApp(db, { security: fixture.security });
   await app.ready();
 });
 afterAll(async () => {
@@ -34,12 +47,14 @@ afterAll(async () => {
 });
 describe("REST API with real migrated SQLite database", () => {
   it("checks database health", async () => {
-    const r = await app.inject({ url: "/api/v1/health" });
+    const r = await authenticatedInject({ url: "/api/v1/health" });
     expect(r.statusCode).toBe(200);
     expect(r.json().data.status).toBe("ok");
   });
   it("seeds all formats as illustrative without fabricated dimensions or suppliers", async () => {
-    const r = await app.inject({ url: "/api/v1/companies/og-tofu/formats" });
+    const r = await authenticatedInject({
+      url: "/api/v1/companies/og-tofu/formats",
+    });
     expect(r.statusCode).toBe(200);
     expect(r.json().data).toHaveLength(3);
     for (const f of r.json().data) {
@@ -61,14 +76,14 @@ describe("REST API with real migrated SQLite database", () => {
     expect(await db.productionScenario.count()).toBe(1);
   });
   it("creates, patches, reads and deletes company data", async () => {
-    const created = await app.inject({
+    const created = await authenticatedInject({
       method: "POST",
       url: "/api/v1/companies",
       payload: { name: "Test company", industryCategory: "Test category" },
     });
     expect(created.statusCode).toBe(201);
     const id = created.json().data.id;
-    const patch = await app.inject({
+    const patch = await authenticatedInject({
       method: "PATCH",
       url: `/api/v1/companies/${id}`,
       payload: { country: "Latvia" },
@@ -77,35 +92,39 @@ describe("REST API with real migrated SQLite database", () => {
     expect(patch.json().data.name).toBe("Test company");
     expect(patch.json().data.industryCategory).toBe("Test category");
     expect(
-      (await app.inject({ url: `/api/v1/companies/${id}` })).json().data
-        .country,
+      (await authenticatedInject({ url: `/api/v1/companies/${id}` })).json()
+        .data.country,
     ).toBe("Latvia");
     expect(
-      (await app.inject({ method: "DELETE", url: `/api/v1/companies/${id}` }))
-        .statusCode,
+      (
+        await authenticatedInject({
+          method: "DELETE",
+          url: `/api/v1/companies/${id}`,
+        })
+      ).statusCode,
     ).toBe(204);
   });
   it("creates and edits products, suppliers, materials, formats, machines and stock", async () => {
     const base = "/api/v1/companies/og-tofu";
-    const product = await app.inject({
+    const product = await authenticatedInject({
       method: "POST",
       url: `${base}/products`,
       payload: { name: "Test product" },
     });
     expect(product.statusCode).toBe(201);
-    const supplier = await app.inject({
+    const supplier = await authenticatedInject({
       method: "POST",
       url: `${base}/suppliers`,
       payload: { name: "Test supplier", leadTimeCalendarDays: q("7") },
     });
     expect(supplier.statusCode).toBe(201);
-    const material = await app.inject({
+    const material = await authenticatedInject({
       method: "POST",
       url: `${base}/materials`,
       payload: { name: "Test material", supplierId: supplier.json().data.id },
     });
     expect(material.statusCode).toBe(201);
-    const format = await app.inject({
+    const format = await authenticatedInject({
       method: "POST",
       url: `${base}/formats`,
       payload: {
@@ -120,7 +139,7 @@ describe("REST API with real migrated SQLite database", () => {
       },
     });
     expect(format.statusCode).toBe(201);
-    const machine = await app.inject({
+    const machine = await authenticatedInject({
       method: "POST",
       url: `${base}/machines`,
       payload: {
@@ -130,7 +149,7 @@ describe("REST API with real migrated SQLite database", () => {
       },
     });
     expect(machine.statusCode).toBe(201);
-    const inventory = await app.inject({
+    const inventory = await authenticatedInject({
       method: "POST",
       url: `${base}/inventory`,
       payload: {
@@ -139,7 +158,7 @@ describe("REST API with real migrated SQLite database", () => {
       },
     });
     expect(inventory.statusCode).toBe(201);
-    const patch = await app.inject({
+    const patch = await authenticatedInject({
       method: "PATCH",
       url: `${base}/inventory/${inventory.json().data.id}`,
       payload: { currentStockPackages: q("600") },
@@ -149,7 +168,7 @@ describe("REST API with real migrated SQLite database", () => {
     expect(patch.json().data.formatId).toBe(format.json().data.id);
     expect(
       (
-        await app.inject({
+        await authenticatedInject({
           method: "PATCH",
           url: `${base}/machines/${machine.json().data.id}`,
           payload: { operators: q("3") },
@@ -159,7 +178,7 @@ describe("REST API with real migrated SQLite database", () => {
   });
   it("persists scenarios and relational links atomically", async () => {
     const input = createDemoScenario();
-    const created = await app.inject({
+    const created = await authenticatedInject({
       method: "POST",
       url: "/api/v1/companies/og-tofu/scenarios",
       payload: { name: "Test alternative", kind: "modeled", input },
@@ -170,7 +189,7 @@ describe("REST API with real migrated SQLite database", () => {
       await db.scenarioAllocation.count({ where: { scenarioId: id } }),
     ).toBe(3);
     input.monthlyProductionKg = q("2000");
-    const updated = await app.inject({
+    const updated = await authenticatedInject({
       method: "PATCH",
       url: `/api/v1/companies/og-tofu/scenarios/${id}`,
       payload: { input },
@@ -182,7 +201,7 @@ describe("REST API with real migrated SQLite database", () => {
     ).toBe(3);
     expect(
       (
-        await app.inject({
+        await authenticatedInject({
           method: "DELETE",
           url: `/api/v1/companies/og-tofu/scenarios/${id}`,
         })
@@ -194,7 +213,7 @@ describe("REST API with real migrated SQLite database", () => {
   });
   it("runs a hypothetical calculation without saving a scenario", async () => {
     const before = await db.productionScenario.count();
-    const r = await app.inject({
+    const r = await authenticatedInject({
       method: "POST",
       url: "/api/v1/calculations/packaging-costs",
       payload: createDemoScenario(),
@@ -206,7 +225,7 @@ describe("REST API with real migrated SQLite database", () => {
   it("exposes comparison and inventory calculators", async () => {
     expect(
       (
-        await app.inject({
+        await authenticatedInject({
           method: "POST",
           url: "/api/v1/calculations/compare-scenarios",
           payload: {
@@ -217,7 +236,7 @@ describe("REST API with real migrated SQLite database", () => {
         })
       ).statusCode,
     ).toBe(200);
-    const r = await app.inject({
+    const r = await authenticatedInject({
       method: "POST",
       url: "/api/v1/calculations/inventory-plan",
       payload: {
@@ -237,13 +256,14 @@ describe("REST API with real migrated SQLite database", () => {
   });
   it("rejects cross-company relational references in both API and database", async () => {
     const other = await db.company.create({ data: { name: "Other company" } });
+    await bootstrapOwner(db, other.id, OWNER);
     const body = formatSchema.parse({
       productId: "og-fresh-tofu",
       materialId: "og-pape",
       portionWeightGrams: q("250"),
       materialCost: { method: "combined", combinedEuroPerPackage: q("0.07") },
     });
-    const r = await app.inject({
+    const r = await authenticatedInject({
       method: "POST",
       url: `/api/v1/companies/${other.id}/formats`,
       payload: body,
@@ -252,7 +272,7 @@ describe("REST API with real migrated SQLite database", () => {
     await expect(
       db.packagingFormat.create({ data: { companyId: other.id, ...body } }),
     ).rejects.toThrow();
-    const scenario = await app.inject({
+    const scenario = await authenticatedInject({
       method: "POST",
       url: `/api/v1/companies/${other.id}/scenarios`,
       payload: {
@@ -264,7 +284,7 @@ describe("REST API with real migrated SQLite database", () => {
     expect(scenario.statusCode).toBe(422);
   });
   it("enforces exactly one inventory reference in API and database", async () => {
-    const r = await app.inject({
+    const r = await authenticatedInject({
       method: "POST",
       url: "/api/v1/companies/og-tofu/inventory",
       payload: {},
@@ -283,7 +303,7 @@ describe("REST API with real migrated SQLite database", () => {
     ).rejects.toThrow();
   });
   it("keeps foreign-key failures safe and blocks deleting referenced records", async () => {
-    const r = await app.inject({
+    const r = await authenticatedInject({
       method: "DELETE",
       url: "/api/v1/companies/og-tofu/products/og-fresh-tofu",
     });
@@ -292,7 +312,7 @@ describe("REST API with real migrated SQLite database", () => {
     expect(r.body).not.toContain("Prisma");
   });
   it("returns consistent validation, semantic and missing-record errors", async () => {
-    const invalid = await app.inject({
+    const invalid = await authenticatedInject({
       method: "POST",
       url: "/api/v1/companies",
       payload: { name: "", unexpected: true },
@@ -303,7 +323,7 @@ describe("REST API with real migrated SQLite database", () => {
     input.formats[0].allocationPercent = q("70");
     expect(
       (
-        await app.inject({
+        await authenticatedInject({
           method: "POST",
           url: "/api/v1/calculations/packaging-costs",
           payload: input,
@@ -311,16 +331,17 @@ describe("REST API with real migrated SQLite database", () => {
       ).statusCode,
     ).toBe(422);
     expect(
-      (await app.inject({ url: "/api/v1/companies/missing" })).statusCode,
+      (await authenticatedInject({ url: "/api/v1/companies/missing" }))
+        .statusCode,
     ).toBe(404);
-    expect((await app.inject({ url: "/not-found" })).json().error.code).toBe(
-      "NOT_FOUND",
-    );
+    expect(
+      (await authenticatedInject({ url: "/not-found" })).json().error.code,
+    ).toBe("NOT_FOUND");
   });
   it("rejects malformed JSON and invalid pagination", async () => {
     expect(
       (
-        await app.inject({
+        await authenticatedInject({
           method: "POST",
           url: "/api/v1/companies",
           headers: { "content-type": "application/json" },
@@ -329,14 +350,15 @@ describe("REST API with real migrated SQLite database", () => {
       ).statusCode,
     ).toBe(400);
     expect(
-      (await app.inject({ url: "/api/v1/companies?limit=-1" })).statusCode,
+      (await authenticatedInject({ url: "/api/v1/companies?limit=-1" }))
+        .statusCode,
     ).toBe(400);
   });
   it("rejects arbitrary nonnumeric strings as validation errors, not internal failures", async () => {
     for (const value of ["abc", "1e999999", "NaN"]) {
       const input = createDemoScenario();
       input.monthlyProductionKg = q(value);
-      const r = await app.inject({
+      const r = await authenticatedInject({
         method: "POST",
         url: "/api/v1/calculations/packaging-costs",
         payload: input,
@@ -348,7 +370,7 @@ describe("REST API with real migrated SQLite database", () => {
   it("rejects external hosts, origins, remote peers and public bind configuration", async () => {
     expect(
       (
-        await app.inject({
+        await authenticatedInject({
           url: "/api/v1/companies",
           headers: { host: "attacker.example" },
         })
@@ -356,7 +378,7 @@ describe("REST API with real migrated SQLite database", () => {
     ).toBe(403);
     expect(
       (
-        await app.inject({
+        await authenticatedInject({
           url: "/api/v1/companies",
           headers: { origin: "https://example.com" },
         })
@@ -364,12 +386,14 @@ describe("REST API with real migrated SQLite database", () => {
     ).toBe(403);
     expect(
       (
-        await app.inject({
+        await authenticatedInject({
           url: "/api/v1/companies",
           remoteAddress: "192.0.2.1",
         })
       ).statusCode,
     ).toBe(403);
-    expect(() => loadConfig({ HOST: "0.0.0.0" })).toThrow();
+    expect(() =>
+      loadServerConfig({ AUTH_MODE: "local", HOST: "0.0.0.0" }),
+    ).toThrow();
   });
 });

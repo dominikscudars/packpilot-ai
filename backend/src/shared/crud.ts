@@ -56,19 +56,20 @@ export function registerCollection<S extends z.ZodObject>(
   },
 ) {
   const prefix = `/api/v1/companies/:companyId/${path}`;
-  app.get(prefix, async (request) => {
+  const access = { config: { access: "company-member" as const } };
+  app.get(prefix, access, async (request) => {
     const { companyId } = paramsSchema.parse(request.params);
     const page = paginationSchema.parse(request.query);
     await requireCompany(db, companyId);
     return { data: await repository.list(companyId, page), pagination: page };
   });
-  app.get(`${prefix}/:id`, async (request) => {
+  app.get(`${prefix}/:id`, access, async (request) => {
     const { companyId, id } = paramsSchema.parse(request.params);
     const item = await repository.get(companyId, id!);
     if (!item) throw new HttpError(404, "Record not found.");
     return { data: item };
   });
-  app.post(prefix, async (request, reply) => {
+  app.post(prefix, access, async (request, reply) => {
     const { companyId } = paramsSchema.parse(request.params);
     const data = schema.parse(request.body);
     await requireCompany(db, companyId);
@@ -77,7 +78,7 @@ export function registerCollection<S extends z.ZodObject>(
       .code(201)
       .send({ data: await repository.create(companyId, data) });
   });
-  app.patch(`${prefix}/:id`, async (request) => {
+  app.patch(`${prefix}/:id`, access, async (request) => {
     const { companyId, id } = paramsSchema.parse(request.params);
     const patch = parsePatch(schema, request.body);
     if (Object.keys(patch).length === 0)
@@ -91,7 +92,7 @@ export function registerCollection<S extends z.ZodObject>(
     await repository.validate?.(companyId, data);
     return { data: await repository.update(companyId, id!, data) };
   });
-  app.delete(`${prefix}/:id`, async (request, reply) => {
+  app.delete(`${prefix}/:id`, access, async (request, reply) => {
     const { companyId, id } = paramsSchema.parse(request.params);
     await repository.delete(companyId, id!);
     return reply.code(204).send();

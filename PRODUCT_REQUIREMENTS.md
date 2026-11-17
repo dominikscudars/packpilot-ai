@@ -56,3 +56,11 @@ Acceptance criteria:
 - The compiled API runs locally without paid services, external APIs or cloud credentials.
 
 Out of scope: new frontend work, public deployment, authentication, tenant authorization, PostgreSQL execution, real-time inventory, supplier discovery, machine learning and AI chat. Backend input snapshots do not synchronize automatically with catalog changes or browser profiles. The next integration task must reconcile rounding policies and establish authentication/ownership before public access. Full schema, formulas, computational limits and operating assumptions are in [backend/README.md](backend/README.md).
+
+## Phase 2 authentication and company access
+
+The backend now verifies Supabase Auth access tokens with jose and authorizes data access through database company memberships. This supersedes Phase 1's lack of authentication; the frontend remains unchanged.
+
+Acceptance: missing/invalid/expired tokens cannot access business data or calculators; company lists and all data routes enforce membership; only owners manage memberships/company metadata/deletion; new companies acquire an owner atomically; existing data requires explicit administrator bootstrap; final-owner removal is blocked; JWT metadata cannot elevate access; exact origins and hosts are configurable; local/test signed tokens need no cloud credentials and cannot be enabled in production. Existing formulas and calculation tests remain unchanged.
+
+Out of scope: live Supabase provisioning, frontend login/API integration, email invitations, public deployment, PostgreSQL migration and Auth-session introspection. Required environment variables, operational limits, ownership onboarding and production prerequisites are documented in [backend/AUTHENTICATION.md](backend/AUTHENTICATION.md).

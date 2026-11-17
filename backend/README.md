@@ -1,6 +1,6 @@
 # PackPilot AI backend foundation
 
-A local-demo REST API for packaging business records, deterministic costs, scenario comparisons and stock planning. Node.js 24 LTS, strict TypeScript, Fastify, Zod, Prisma 6.19 and SQLite. It runs without external services or credentials. The existing frontend remains a separate application using browser storage.
+An authenticated REST API for packaging business records, deterministic costs, scenario comparisons and stock planning. Node.js 24 LTS, strict TypeScript, Fastify, Zod, Prisma 6.19 and SQLite. Offline development and tests run without external services or credentials; deployed authentication uses Supabase Auth. The existing frontend remains a separate application using browser storage.
 
 ## Setup and execution
 
@@ -13,6 +13,8 @@ npm ci
 npm run db:generate
 npm run db:migrate
 npm run db:seed
+npm run auth:setup
+npm run members:bootstrap -- og-tofu 11111111-1111-4111-8111-111111111111
 npm run dev
 ```
 
@@ -31,13 +33,13 @@ npm start
 
 Tests create a fresh temporary SQLite file, apply the checked-in migration, seed it and exercise the actual Fastify/Prisma integration. They do not use your development database. Run frontend checks separately from the repository root.
 
-## Local-demo security contract
+## Authentication and access
 
-This release has **no user authentication or tenant authorization**. It must not be published on Vercel or exposed through a public port, tunnel, reverse proxy or port-forwarding service. The frontend's Vercel configuration does not deploy this backend. Every local user able to reach the API can access every demo company.
+Read [AUTHENTICATION.md](AUTHENTICATION.md) for Supabase setup, offline signed-token development, initial ownership, role permissions, allowed frontend origins and deployment requirements. Company data and calculators now require a Bearer access token. Only health and CORS preflight are public. Members can work with their company's operational records; owners additionally manage company settings and memberships. All company lists are filtered by membership, and other-company requests return 404.
 
-The server configuration only accepts loopback bind addresses (`127.0.0.1` or `::1`). The app also rejects non-loopback peers, non-local Host headers and requests carrying an Origin header. It does not enable CORS or trust forwarded addresses. These measures reduce accidental exposure and browser cross-site access; they are not an authentication system. Do not remove them to connect a public frontend. Add authentication, per-request company ownership authorization and a suitable persistent database first.
+The `.env.example` explicitly enables loopback-only local authentication. Production must use Supabase mode and an asymmetric signing key; missing configuration fails closed. No privileged Supabase key belongs in frontend code. This phase does not deploy the API or connect the frontend.
 
-Bodies are limited to 128 KiB, collections are paginated (default 50, max 100), calculator inputs cap format/machine counts, and allocation work is bounded. Request bodies and credentials are not logged. Internal errors use a generic message and request ID; validation errors report paths/messages. Future production work must add rate limits, operational monitoring and an access model.
+Bodies remain limited to 128 KiB, collections to 100 records per page, and calculations to their documented computational bounds. Authenticated production deployment still needs persistent storage, HTTPS, provider configuration and operational rate limits/monitoring.
 
 ## Structure
 
@@ -47,6 +49,7 @@ backend/
     app.ts                    Injectable Fastify app; no listening side effects
     server.ts                 Configuration, startup and shutdown
     config/                   Environment validation
+    auth/                     JWT verification, membership guards and ownership bootstrap
     domain/                   Zod contracts, inferred TypeScript types, demo inputs
     calculation-engine/       Pure allocation, cost, comparison and inventory logic
     modules/
@@ -106,7 +109,7 @@ Successful responses use `{ "data": ... }`. Lists also return `{ "pagination": {
 
 | Method             | Path                                           | Body / behavior                                   |
 | ------------------ | ---------------------------------------------- | ------------------------------------------------- |
-| GET                | `/api/v1/health`                               | Database connectivity and local-demo mode         |
+| GET                | `/api/v1/health`                               | Database connectivity and authentication mode     |
 | GET, POST          | `/api/v1/companies`                            | List / create company                             |
 | GET, PATCH, DELETE | `/api/v1/companies/:id`                        | Read / edit / delete unreferenced company         |
 | GET, POST          | `/api/v1/companies/:companyId/:collection`     | List / create company-owned records               |
@@ -115,24 +118,24 @@ Successful responses use `{ "data": ... }`. Lists also return `{ "pagination": {
 | POST               | `/api/v1/calculations/compare-scenarios`       | `{ baseline, alternative, sameProductAndDemand }` |
 | POST               | `/api/v1/calculations/inventory-plan`          | Independent inventory planning input              |
 
-Collections: **products, suppliers, materials, formats, machines, inventory, scenarios**. List query parameters are `limit` and `offset`. References restrict deletion; deleting a scenario removes its join records but leaves the catalog intact. Referential conflicts return 409.
+Collections: **products, suppliers, materials, formats, machines, inventory, scenarios**. Owner-only membership endpoints are documented in [AUTHENTICATION.md](AUTHENTICATION.md). List query parameters are `limit` and `offset`. References restrict deletion; deleting a scenario removes its join records but leaves the catalog intact. Referential conflicts return 409.
 
-Errors use `{ "error": { "code", "message", "requestId", "details"? } }`. Statuses: 400 malformed/schema-invalid request; 403 local-demo access restriction; 404 missing record/endpoint; 409 relation/uniqueness conflict; 413 oversized body; 422 invalid calculation/domain model; 500 generic internal failure. Schema details contain paths and messages, never submitted values or SQL.
+Errors use `{ "error": { "code", "message", "requestId", "details"? } }`. Statuses: 400 malformed/schema-invalid request; 401 invalid/missing authentication; 403 role/origin/host restriction; 404 missing record/endpoint; 409 relation/uniqueness conflict; 413 oversized body; 422 invalid calculation/domain model; 500 generic internal failure. Schema details contain paths and messages, never submitted values or SQL.
 
 ### Executable examples
 
-From `backend/`, with the API running:
+From `backend/`, with the API running and `PACKPILOT_TOKEN` set using the local token command or a Supabase access token:
 
 ```sh
-curl http://127.0.0.1:3001/api/v1/companies/og-tofu/scenarios
+curl http://127.0.0.1:3001/api/v1/companies/og-tofu/scenarios -H "Authorization: Bearer $PACKPILOT_TOKEN"
 
-curl -X POST http://127.0.0.1:3001/api/v1/companies   -H 'Content-Type: application/json'   -d '{"name":"Example manufacturer","country":"Latvia"}'
+curl -X POST http://127.0.0.1:3001/api/v1/companies   -H "Authorization: Bearer $PACKPILOT_TOKEN" -H 'Content-Type: application/json'   -d '{"name":"Example manufacturer","country":"Latvia"}'
 
-curl -X POST http://127.0.0.1:3001/api/v1/calculations/packaging-costs   -H 'Content-Type: application/json' --data-binary @examples/packaging-costs.json
+curl -X POST http://127.0.0.1:3001/api/v1/calculations/packaging-costs   -H "Authorization: Bearer $PACKPILOT_TOKEN" -H 'Content-Type: application/json' --data-binary @examples/packaging-costs.json
 
-curl -X POST http://127.0.0.1:3001/api/v1/calculations/compare-scenarios   -H 'Content-Type: application/json' --data-binary @examples/compare-scenarios.json
+curl -X POST http://127.0.0.1:3001/api/v1/calculations/compare-scenarios   -H "Authorization: Bearer $PACKPILOT_TOKEN" -H 'Content-Type: application/json' --data-binary @examples/compare-scenarios.json
 
-curl -X POST http://127.0.0.1:3001/api/v1/calculations/inventory-plan   -H 'Content-Type: application/json' --data-binary @examples/inventory-plan.json
+curl -X POST http://127.0.0.1:3001/api/v1/calculations/inventory-plan   -H "Authorization: Bearer $PACKPILOT_TOKEN" -H 'Content-Type: application/json' --data-binary @examples/inventory-plan.json
 ```
 
 The cost example returns 800 / 300 / 200 packages, 1,300 total, €91 materials, €195 labor, €286 operating cost and €0.286/kg. Machine-hours are approximately 12.6388888889. The comparison and inventory examples contain clearly labeled **synthetic assumptions**, not pilot investment quotes or stock data.
@@ -205,7 +208,7 @@ Receipts are credited only if known, not overdue, and due by the lead-time arriv
 
 The seed uses the supplied pilot data, including reported refrigeration at approximately +2°C to +6°C and about 10 days of shelf life. The 80/15/5 weight mix is hypothetical. All three formats are marked illustrative; 250 g is not asserted to be actively sold. €0.07 is a combined material+label estimate with no invented split. One operator is assumed. Bag dimensions, supplier quotes, current inventory, investment, maintenance, capacity and additional overhead are missing. Material names do not imply suitability, food-contact compliance or shelf-life validation.
 
-There is no frontend integration, authentication, migration of existing browser data, machine batch scheduling, multi-currency support, real-time stock integration or AI service. Inventory consumption is provided by the caller; the API does not silently turn a packaging scenario into a stock plan. Quotation/contact/specification fields store supplied text and do not retrieve external data. Packaging quantity is expressed as packages, not meters of film or roll counts.
+There is no frontend integration or migration of existing browser data, machine batch scheduling, multi-currency support, real-time stock integration or AI service. Inventory consumption is provided by the caller; the API does not silently turn a packaging scenario into a stock plan. Quotation/contact/specification fields store supplied text and do not retrieve external data. Packaging quantity is expressed as packages, not meters of film or roll counts.
 
 ## Extending and migrating to PostgreSQL
 

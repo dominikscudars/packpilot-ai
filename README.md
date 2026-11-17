@@ -430,7 +430,9 @@ npm ci
 npm run db:generate
 npm run db:migrate
 npm run db:seed
+npm run auth:setup
+npm run members:bootstrap -- og-tofu 11111111-1111-4111-8111-111111111111
 npm run dev
 ```
 
-See [backend/README.md](backend/README.md) for contracts, examples, rounding, tests and the local-only security model. This API is not ready for unauthenticated public hosting or connection to a public Vercel frontend.
+See [backend/README.md](backend/README.md) for contracts, examples, rounding, tests and the authenticated API contract. [Authentication setup](backend/AUTHENTICATION.md) covers Supabase, signed local development tokens, company memberships and the remaining deployment requirements. The frontend is not connected to this API yet.

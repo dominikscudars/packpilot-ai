@@ -1,3 +1,6 @@
+import cors from "@fastify/cors";
+import { installAuthentication, type SecurityOptions } from "./auth/access.js";
+import { membershipRoutes } from "./modules/memberships/routes.js";
 import Fastify, { LogController, type FastifyServerOptions } from "fastify";
 import { Prisma, type PrismaClient } from "@prisma/client";
 import { ZodError } from "zod";
@@ -12,32 +15,59 @@ import { scenarioRoutes } from "./modules/scenarios/routes.js";
 import { calculationRoutes } from "./modules/costs/routes.js";
 export function buildApp(
   db: PrismaClient,
-  logger: FastifyServerOptions["logger"] = false,
+  options: {
+    security: SecurityOptions;
+    logger?: FastifyServerOptions["logger"];
+  },
 ) {
   const app = Fastify({
-    logger,
+    logger: options.logger ?? false,
     logController: new LogController({ disableRequestLogging: true }),
     bodyLimit: 131072,
     trustProxy: false,
   });
+  const { security } = options;
   app.addHook("onRequest", async (request) => {
-    if (!["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(request.ip))
-      throw new HttpError(
-        403,
-        "This API is restricted to the local demo host.",
-      );
-    if (request.headers.origin)
-      throw new HttpError(
-        403,
-        "Browser-origin access is disabled in the local demo.",
-      );
     if (
-      !/^(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/.test(
-        request.headers.host ?? "",
-      )
+      security.mode === "local" &&
+      !["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(request.ip)
     )
+      throw new HttpError(
+        403,
+        "Development authentication is restricted to loopback access.",
+      );
+    const host = request.headers.host ?? "";
+    let hostname = "";
+    try {
+      const url = new URL(`http://${host}`);
+      if (
+        url.username ||
+        url.password ||
+        url.pathname !== "/" ||
+        url.search ||
+        url.hash
+      )
+        throw new Error();
+      hostname = url.hostname.toLowerCase();
+    } catch {
       throw new HttpError(403, "Host is not allowed.");
+    }
+    if (!security.allowedHosts.includes(hostname))
+      throw new HttpError(403, "Host is not allowed.");
+    if (
+      request.headers.origin &&
+      !security.allowedOrigins.includes(request.headers.origin)
+    )
+      throw new HttpError(403, "Origin is not allowed.");
   });
+  app.register(cors, {
+    origin: security.allowedOrigins,
+    methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Authorization", "Content-Type"],
+    credentials: false,
+    maxAge: 600,
+  });
+  installAuthentication(app, db, security);
   app.setErrorHandler((error, request, reply) => {
     let status = 500,
       code = "INTERNAL_ERROR",
@@ -58,17 +88,23 @@ export function buildApp(
     } else if (error instanceof HttpError) {
       status = error.statusCode;
       code =
-        status === 404
-          ? "NOT_FOUND"
-          : status === 403
-            ? "LOCAL_DEMO_ONLY"
-            : "INVALID_REQUEST";
+        status === 401
+          ? "UNAUTHENTICATED"
+          : status === 404
+            ? "NOT_FOUND"
+            : status === 403
+              ? "FORBIDDEN"
+              : "INVALID_REQUEST";
       message = error.message;
     } else if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === "P2025") {
         status = 404;
         code = "NOT_FOUND";
         message = "Record not found.";
+      } else if (["P1008", "P2034"].includes(error.code)) {
+        status = 409;
+        code = "CONCURRENT_UPDATE";
+        message = "A concurrent update occurred; retry the request.";
       } else if (["P2002", "P2003"].includes(error.code)) {
         status = 409;
         code = "RELATION_CONFLICT";
@@ -95,35 +131,33 @@ export function buildApp(
         { event: "request_failed", requestId: request.id },
         "Request failed",
       );
-    return reply
-      .code(status)
-      .send({
-        error: {
-          code,
-          message,
-          ...(details ? { details } : {}),
-          requestId: request.id,
-        },
-      });
+    return reply.code(status).send({
+      error: {
+        code,
+        message,
+        ...(details ? { details } : {}),
+        requestId: request.id,
+      },
+    });
   });
   app.setNotFoundHandler((request, reply) =>
-    reply
-      .code(404)
-      .send({
-        error: {
-          code: "NOT_FOUND",
-          message: "Endpoint not found.",
-          requestId: request.id,
-        },
-      }),
+    reply.code(404).send({
+      error: {
+        code: "NOT_FOUND",
+        message: "Endpoint not found.",
+        requestId: request.id,
+      },
+    }),
   );
-  app.get("/api/v1/health", async () => {
+  app.get("/api/v1/health", { config: { access: "public" } }, async () => {
     await db.$queryRaw`SELECT 1`;
     return {
-      data: { status: "ok", securityMode: "local-demo", version: "v1" },
+      data: { status: "ok", securityMode: security.mode, version: "v1" },
     };
   });
+  app.get("/api/v1/auth/me", async (request) => ({ data: request.principal }));
   companyRoutes(app, db);
+  membershipRoutes(app, db);
   productRoutes(app, db);
   packagingRoutes(app, db);
   machineRoutes(app, db);

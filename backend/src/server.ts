@@ -1,11 +1,15 @@
 import { PrismaClient } from "@prisma/client";
-import { loadConfig } from "./config/env.js";
+import { loadServerConfig } from "./config/env.js";
+import { createSecurity } from "./auth/runtime.js";
 import { buildApp } from "./app.js";
-const config = loadConfig();
+const config = loadServerConfig();
 const db = new PrismaClient({ datasourceUrl: config.DATABASE_URL });
 const app = buildApp(db, {
-  level: config.LOG_LEVEL,
-  redact: ["req.headers.authorization", "req.headers.cookie"],
+  security: await createSecurity(config),
+  logger: {
+    level: config.LOG_LEVEL,
+    redact: ["req.headers.authorization", "req.headers.cookie"],
+  },
 });
 app.addHook("onClose", async () => db.$disconnect());
 for (const signal of ["SIGINT", "SIGTERM"] as const)

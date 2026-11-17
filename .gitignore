@@ -161,3 +161,6 @@ backend/**/*.db
 backend/**/*.db-*
 backend/**/*.sqlite
 backend/**/*.sqlite-*
+
+# Local development authentication keys (never commit private or public fixtures)
+backend/.auth/

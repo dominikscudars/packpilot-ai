@@ -30,3 +30,5 @@ Read the entire README.md and PRODUCT_REQUIREMENTS.md before changing product be
 ## Backend package
 
 The independent API is in `backend/`; read [backend/AGENTS.md](backend/AGENTS.md) and [backend/README.md](backend/README.md) before editing it. Run checks from that directory as well as relevant root checks. Root Vitest is scoped to frontend tests; backend tests use Node and a temporary migrated SQLite database. The backend's mass-preserving allocation contract intentionally differs from the earlier frontend rounding policy; do not silently swap one for the other.
+
+Authentication changes must follow [backend/AUTHENTICATION.md](backend/AUTHENTICATION.md). Keep company memberships authoritative, tokens verified and local/test authentication separated from production. Never change calculation behavior as part of auth wiring.
