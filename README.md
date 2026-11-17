@@ -413,3 +413,8 @@ Our immediate objective is to demonstrate that PackPilot AI can transform real p
 The MVP is a proof of concept, not a complete commercial product.
 
 Our long-term objective is to develop an accessible packaging intelligence platform that helps small and medium-sized food manufacturers make better packaging decisions and continuously improve their operations.
+
+
+## Development setup
+
+See [DEVELOPMENT.md](DEVELOPMENT.md) for installation, running the app and collaboration. Read [PRODUCT_REQUIREMENTS.md](PRODUCT_REQUIREMENTS.md) for the implemented foundation scope and [CALCULATIONS.md](CALCULATIONS.md) for formulas, assumptions and rounding.
