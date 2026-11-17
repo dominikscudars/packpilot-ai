@@ -1,0 +1,165 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "sqlite"
+  url = env("DATABASE_URL")
+}
+// Numerical Json fields contain {value: decimal-string|null, quality, sourceNote?}.
+// Decimal strings avoid SQLite REAL coercion; no financial numbers are stored as Float.
+model Company {
+  id String @id @default(cuid())
+  name String
+  industryCategory String?
+  country String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  products Product[]
+  suppliers Supplier[]
+  materials PackagingMaterial[]
+  formats PackagingFormat[]
+  machines PackagingMachine[]
+  inventory PackagingInventory[]
+  scenarios ProductionScenario[]
+}
+model Product {
+  id String @id @default(cuid())
+  companyId String
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  name String
+  category String?
+  storageRequirements String?
+  shelfLifeDays Json
+  shelfLifeNote String?
+  lengthMm Json
+  widthMm Json
+  heightMm Json
+  formats PackagingFormat[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([id, companyId])
+  @@index([companyId])
+}
+model Supplier {
+  id String @id @default(cuid())
+  companyId String
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  name String
+  contactInformation String?
+  leadTimeCalendarDays Json
+  minimumOrderPackages Json
+  quotations String?
+  materials PackagingMaterial[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([id, companyId])
+  @@index([companyId])
+}
+model PackagingMaterial {
+  id String @id @default(cuid())
+  companyId String
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  name String
+  structure String?
+  supplierId String?
+  supplier Supplier? @relation(fields: [supplierId, companyId], references: [id, companyId], onDelete: Restrict)
+  unitCostEuroPerPackage Json
+  technicalSpecifications String?
+  foodContactDocumentationStatus String @default("unknown")
+  validationStatus String @default("unvalidated")
+  formats PackagingFormat[]
+  inventory PackagingInventory[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([id, companyId])
+  @@index([companyId])
+}
+model PackagingFormat {
+  id String @id @default(cuid())
+  companyId String
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  productId String
+  product Product @relation(fields: [productId, companyId], references: [id, companyId], onDelete: Restrict)
+  materialId String
+  material PackagingMaterial @relation(fields: [materialId, companyId], references: [id, companyId], onDelete: Restrict)
+  portionWeightGrams Json
+  lengthMm Json
+  widthMm Json
+  heightMm Json
+  materialCost Json
+  commercialStatus String @default("unknown")
+  dataQualityStatus String
+  inventory PackagingInventory[]
+  scenarioAllocations ScenarioAllocation[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([id, companyId])
+  @@index([companyId])
+}
+model PackagingMachine {
+  id String @id @default(cuid())
+  companyId String
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  model String
+  throughput Json
+  operators Json
+  investmentEuro Json
+  maintenanceEuroPerMonth Json
+  availableHoursPerMonth Json
+  dataQualityStatus String
+  scenarios ScenarioMachine[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([id, companyId])
+  @@index([companyId])
+}
+model PackagingInventory {
+  id String @id @default(cuid())
+  companyId String
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  formatId String?
+  format PackagingFormat? @relation(fields: [formatId, companyId], references: [id, companyId], onDelete: Restrict)
+  materialId String?
+  material PackagingMaterial? @relation(fields: [materialId, companyId], references: [id, companyId], onDelete: Restrict)
+  currentStockPackages Json
+  packagesPerProductionKg Json
+  supplierLeadTimeCalendarDays Json
+  minimumOrderPackages Json
+  safetyStockPackages Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([id, companyId])
+  @@index([companyId])
+}
+model ProductionScenario {
+  id String @id @default(cuid())
+  companyId String
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  name String
+  kind String
+  // Versioned scenario snapshots remain independent of later catalog edits.
+  schemaVersion Int @default(1)
+  input Json
+  allocations ScenarioAllocation[]
+  machines ScenarioMachine[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([id, companyId])
+  @@index([companyId])
+}
+model ScenarioAllocation {
+  scenarioId String
+  companyId String
+  formatId String
+  scenario ProductionScenario @relation(fields: [scenarioId, companyId], references: [id, companyId], onDelete: Cascade)
+  format PackagingFormat @relation(fields: [formatId, companyId], references: [id, companyId], onDelete: Restrict)
+  @@id([scenarioId, formatId])
+}
+model ScenarioMachine {
+  scenarioId String
+  companyId String
+  machineId String
+  scenario ProductionScenario @relation(fields: [scenarioId, companyId], references: [id, companyId], onDelete: Cascade)
+  machine PackagingMachine @relation(fields: [machineId, companyId], references: [id, companyId], onDelete: Restrict)
+  @@id([scenarioId, machineId])
+}

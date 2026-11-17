@@ -418,3 +418,19 @@ Our long-term objective is to develop an accessible packaging intelligence platf
 ## Development setup
 
 See [DEVELOPMENT.md](DEVELOPMENT.md) for installation, running the app and collaboration. Read [PRODUCT_REQUIREMENTS.md](PRODUCT_REQUIREMENTS.md) for the implemented foundation scope and [CALCULATIONS.md](CALCULATIONS.md) for formulas, assumptions and rounding.
+
+## Backend foundation (local demo)
+
+The independent Node.js/TypeScript API is in [`backend/`](backend/README.md). It provides SQLite persistence, packaging calculations, scenario comparison and inventory planning. The existing frontend still uses local browser storage.
+
+```sh
+cd backend
+cp .env.example .env
+npm ci
+npm run db:generate
+npm run db:migrate
+npm run db:seed
+npm run dev
+```
+
+See [backend/README.md](backend/README.md) for contracts, examples, rounding, tests and the local-only security model. This API is not ready for unauthenticated public hosting or connection to a public Vercel frontend.

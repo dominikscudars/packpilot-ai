@@ -26,3 +26,7 @@ Read the entire README.md and PRODUCT_REQUIREMENTS.md before changing product be
 - Work on a descriptive feature branch; submit focused pull requests with behavior, assumptions and actual validation results. Do not merge or push directly to main without instruction.
 - Coordinate changes to shared models through the PR. Include the lockfile when dependencies change.
 - Do not commit secrets, customer data beyond the authorized demo, node_modules or generated builds. Browser storage is demo persistence, not multi-user infrastructure.
+
+## Backend package
+
+The independent API is in `backend/`; read [backend/AGENTS.md](backend/AGENTS.md) and [backend/README.md](backend/README.md) before editing it. Run checks from that directory as well as relevant root checks. Root Vitest is scoped to frontend tests; backend tests use Node and a temporary migrated SQLite database. The backend's mass-preserving allocation contract intentionally differs from the earlier frontend rounding policy; do not silently swap one for the other.
