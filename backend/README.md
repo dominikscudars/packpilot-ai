@@ -1,6 +1,6 @@
 # PackPilot AI backend foundation
 
-An authenticated REST API for packaging business records, deterministic costs, scenario comparisons and stock planning. Node.js 24 LTS, strict TypeScript, Fastify, Zod, Prisma 6.19 and SQLite. Offline development and tests run without external services or credentials; deployed authentication uses Supabase Auth. The existing frontend remains a separate application using browser storage.
+An authenticated REST API for packaging business records, deterministic costs, scenario comparisons and stock planning. Node.js 24 LTS, strict TypeScript, Fastify, Zod, Prisma 6.19 and SQLite. Offline development and tests run without external services or credentials; deployed authentication uses Supabase Auth. The React frontend connects to this API and offers a separate local demo; see [frontend integration](../FRONTEND_INTEGRATION.md).
 
 ## Setup and execution
 
@@ -35,9 +35,9 @@ Tests create a fresh temporary SQLite file, apply the checked-in migration, seed
 
 ## Authentication and access
 
-Read [AUTHENTICATION.md](AUTHENTICATION.md) for Supabase setup, offline signed-token development, initial ownership, role permissions, allowed frontend origins and deployment requirements. Company data and calculators now require a Bearer access token. Only health and CORS preflight are public. Members can work with their company's operational records; owners additionally manage company settings and memberships. All company lists are filtered by membership, and other-company requests return 404.
+Read [AUTHENTICATION.md](AUTHENTICATION.md) for Supabase setup, offline signed-token development, initial ownership, role permissions, allowed frontend origins and deployment requirements. Company data and calculators now require a Bearer access token. Company lists include the caller’s `membershipRole` (`owner` or `member`) without exposing other memberships. Only health and CORS preflight are public. Members can work with their company's operational records; owners additionally manage company settings and memberships. All company lists are filtered by membership, and other-company requests return 404.
 
-The `.env.example` explicitly enables loopback-only local authentication. Production must use Supabase mode and an asymmetric signing key; missing configuration fails closed. No privileged Supabase key belongs in frontend code. This phase does not deploy the API or connect the frontend.
+The `.env.example` explicitly enables loopback-only local authentication. Production must use Supabase mode and an asymmetric signing key; missing configuration fails closed. No privileged Supabase key belongs in frontend code. Frontend integration is described in the root documentation. No public deployment has been performed.
 
 Bodies remain limited to 128 KiB, collections to 100 records per page, and calculations to their documented computational bounds. Authenticated production deployment still needs persistent storage, HTTPS, provider configuration and operational rate limits/monitoring.
 
@@ -173,7 +173,7 @@ Requested format kg = production kg × allocation percent / 100. The percentages
 
 Package costs are charged only on the resulting whole packages. The response includes cost per **planned** kg and per **packed** kg. Unfilled scenarios are excluded from investment-savings comparisons.
 
-This deliberately differs from the earlier frontend's independent round-up policy. The frontend is unchanged and is not connected to this API. Both produce the identical exact OG TOFU reference; fractional-volume behavior must be reconciled during a later frontend integration task.
+The integrated frontend now uses this policy in authenticated and explicit demo modes. It supersedes the historical independent round-up policy; both retain the exact OG TOFU reference. The UI reports packed and unpackaged mass.
 
 ### Costs and efficiency
 
@@ -208,7 +208,7 @@ Receipts are credited only if known, not overdue, and due by the lead-time arriv
 
 The seed uses the supplied pilot data, including reported refrigeration at approximately +2°C to +6°C and about 10 days of shelf life. The 80/15/5 weight mix is hypothetical. All three formats are marked illustrative; 250 g is not asserted to be actively sold. €0.07 is a combined material+label estimate with no invented split. One operator is assumed. Bag dimensions, supplier quotes, current inventory, investment, maintenance, capacity and additional overhead are missing. Material names do not imply suitability, food-contact compliance or shelf-life validation.
 
-There is no frontend integration or migration of existing browser data, machine batch scheduling, multi-currency support, real-time stock integration or AI service. Inventory consumption is provided by the caller; the API does not silently turn a packaging scenario into a stock plan. Quotation/contact/specification fields store supplied text and do not retrieve external data. Packaging quantity is expressed as packages, not meters of film or roll counts.
+There is no migration of existing browser data, machine batch scheduling, multi-currency support, real-time stock integration or AI service. Inventory consumption is provided by the caller; the API does not silently turn a packaging scenario into a stock plan. Quotation/contact/specification fields store supplied text and do not retrieve external data. Packaging quantity is expressed as packages, not meters of film or roll counts.
 
 ## Extending and migrating to PostgreSQL
 

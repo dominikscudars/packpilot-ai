@@ -1,15 +1,20 @@
+import { useState } from "react";
 import { useWorkspace } from "../components/WorkspaceProvider";
-import { ScenarioEditor } from "../components/ScenarioEditor";
-import { Results, evaluate, euro, number } from "../components/Results";
-import { compareScenarios } from "../optimization/compareScenarios";
+import { useRequest, RequestState } from "../components/AsyncState";
+import {
+  ApiResults,
+  Notes,
+  money,
+  decimalText,
+} from "../components/ApiResults";
+import { ScenarioPanel } from "../components/ScenarioPanel";
 export function Simulator() {
-  const { workspace, update } = useWorkspace();
-  const baseline = evaluate(workspace.baseline, workspace);
-  const alternative = evaluate(workspace.alternative, workspace);
-  const comparison =
-    baseline.result && alternative.result
-      ? compareScenarios(baseline.result, alternative.result)
-      : null;
+  const { baseline, alternative, setAlternative, gateway } = useWorkspace();
+  const [sameDemand, setSameDemand] = useState(false);
+  const state = useRequest(
+    JSON.stringify([baseline.input, alternative.input, sameDemand]),
+    () => gateway.compare(baseline.input, alternative.input, sameDemand),
+  );
   return (
     <>
       <header className="page-heading">
@@ -17,74 +22,74 @@ export function Simulator() {
           <span className="eyebrow">EXPLORE THE POSSIBILITIES</span>
           <h1>Scenario simulator</h1>
           <p>
-            Adjust an alternative and compare it with your current operation.
+            Compare an independent alternative against the current overview
+            draft: {baseline.name}.
           </p>
         </div>
         <button
-          className="button secondary"
-          onClick={() =>
-            update({
-              ...workspace,
-              alternative: {
-                ...structuredClone(workspace.baseline),
-                id: "alternative",
-                name: "Alternative scenario",
-              },
-            })
-          }
+          className="secondary"
+          onClick={() => {
+            setAlternative({
+              id: null,
+              name: "Alternative scenario",
+              input: structuredClone(baseline.input),
+            });
+            setSameDemand(false);
+          }}
         >
           Copy current inputs
         </button>
       </header>
-      <div className="notice">
-        Alternative inputs are saved separately. Machine timing and staffing
-        come from the shared company profile.
-      </div>
-      <section className="panel">
-        <ScenarioEditor
-          scenario={workspace.alternative}
-          onChange={(alternative) => update({ ...workspace, alternative })}
+      <label className="check-label">
+        <input
+          type="checkbox"
+          checked={sameDemand}
+          onChange={(e) => setSameDemand(e.target.checked)}
         />
-      </section>
-      {alternative.error && (
-        <div role="alert" className="error">
-          {alternative.error}
-        </div>
+        I confirm both scenarios represent the same product and demand.
+      </label>
+      <RequestState
+        error={state.error}
+        onRetry={state.retry}
+        loading={!state.data && !state.error}
+      />
+      {state.data && (
+        <>
+          <section className="panel">
+            <h2>Comparison</h2>
+            <p>
+              Current packaging cost:{" "}
+              {money(state.data.baseline.totalPackagingOperatingEuro)} ·
+              Alternative:{" "}
+              {money(state.data.alternative.totalPackagingOperatingEuro)}
+            </p>
+            <p>
+              Change in monthly packaging expenditure:{" "}
+              <strong>
+                {money(state.data.differences.totalPackagingEuro.absolute)}
+              </strong>
+            </p>
+            <p>
+              Monthly net savings including recurring costs:{" "}
+              <strong>{money(state.data.monthlyNetSavingsEuro)}</strong>
+            </p>
+            <p>
+              Simple payback: {decimalText(state.data.simplePaybackMonths)}{" "}
+              months
+            </p>
+          </section>
+          <Notes data={state.data} />
+          <ApiResults
+            result={state.data.alternative}
+            input={alternative.input}
+          />
+        </>
       )}
-      {baseline.error && (
-        <div role="alert" className="error">
-          Current operation: {baseline.error}
-        </div>
-      )}
-      {comparison && baseline.result && alternative.result && (
-        <section className="panel comparison">
-          <div>
-            <span className="eyebrow">CURRENT OPERATION</span>
-            <strong>{euro(baseline.result.operatingEuro)}</strong>
-            <small>{number(baseline.result.productionKg, 2)} kg / month</small>
-          </div>
-          <span aria-hidden="true">→</span>
-          <div>
-            <span className="eyebrow">ALTERNATIVE</span>
-            <strong>{euro(alternative.result.operatingEuro)}</strong>
-            <small>
-              {number(alternative.result.productionKg, 2)} kg / month
-            </small>
-          </div>
-          <div>
-            <span className="eyebrow">MONTHLY COST CHANGE</span>
-            <strong>{euro(comparison.operatingCostDifferenceEuro)}</strong>
-            <small>
-              {comparison.comparableVolume
-                ? "At equal production volume"
-                : "Different production volumes; not a like-for-like saving"}
-            </small>
-          </div>
-        </section>
-      )}
-      {alternative.result && (
-        <Results result={alternative.result} catalog={workspace} />
-      )}
+      <ScenarioPanel
+        title="Alternative scenario"
+        draft={alternative}
+        onChange={setAlternative}
+      />
     </>
   );
 }

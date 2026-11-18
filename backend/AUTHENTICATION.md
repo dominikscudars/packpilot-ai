@@ -32,7 +32,7 @@ An owner must obtain the intended recipient's authenticated user UUID through a 
 
 1. Create or select a Supabase project and enable the intended login provider in Supabase Auth (email/password is sufficient for the initial integration). Configure email confirmation according to the intended onboarding flow. Anonymous Supabase users are rejected by this API.
 2. In Auth's JWT signing-key settings, use an **asymmetric ES256 or RS256 signing key**. Legacy HS256/shared-secret tokens are intentionally unsupported. Complete any signing-key transition before connecting clients.
-3. Configure the Auth site URL and exact allowed callback/redirect URLs for your frontend. These Supabase redirect settings are separate from the backend CORS allowlist. This phase has no frontend sign-in screen.
+3. Configure the Auth site URL and exact allowed callback/redirect URLs for your frontend. These Supabase redirect settings are separate from the backend CORS allowlist. The integrated frontend supports email/password sign-in; see [frontend setup](../FRONTEND_INTEGRATION.md).
 4. Set the backend environment explicitly:
 
 ```dotenv
@@ -114,6 +114,6 @@ The Supabase Auth user store and the application's SQLite business database are 
 
 ## Remaining deployment requirements
 
-No live Supabase login, public deployment or frontend integration has been performed. Before deployment, configure and verify the real project/signing keys, test sign-in and token renewal end to end, bootstrap intended ownership for existing data, configure HTTPS and exact hosts/origins, and provide a suitable persistent database with backups. SQLite still requires a persistent filesystem and a single-instance deployment strategy; a PostgreSQL migration and target-database tests remain separate work. Add operational rate limits/monitoring and decide Auth-session revocation requirements before handling real customer data. Keep development keys, identities and databases out of production.
+Frontend integration is implemented; live Supabase login and public deployment remain unverified. Before deployment, configure and verify the real project/signing keys, test sign-in and token renewal end to end, bootstrap intended ownership for existing data, configure HTTPS and exact hosts/origins, and provide a suitable persistent database with backups. SQLite still requires a persistent filesystem and a single-instance deployment strategy; a PostgreSQL migration and target-database tests remain separate work. Add operational rate limits/monitoring and decide Auth-session revocation requirements before handling real customer data. Keep development keys, identities and databases out of production.
 
-The existing frontend still uses browser storage and its earlier calculation engine. A later integration task must add login/session handling, authenticated API calls and reconcile the documented rounding policies. No calculation formulas were changed in this phase.
+The integrated frontend uses Supabase sessions and authenticated API calls, with a separate explicit offline demo. See [FRONTEND_INTEGRATION.md](../FRONTEND_INTEGRATION.md). The backend calculation engines were not changed by authentication or frontend integration.

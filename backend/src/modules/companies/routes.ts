@@ -11,11 +11,27 @@ export function companyRoutes(app: FastifyInstance, db: PrismaClient) {
   app.get("/api/v1/companies", async (request) => {
     const pagination = paginationSchema.parse(request.query);
     return {
-      data: await db.company.findMany({
-        where: { memberships: { some: { userId: principal(request).userId } } },
-        take: pagination.limit,
-        skip: pagination.offset,
-        orderBy: { id: "asc" },
+      data: (
+        await db.company.findMany({
+          where: {
+            memberships: { some: { userId: principal(request).userId } },
+          },
+          include: {
+            memberships: {
+              where: { userId: principal(request).userId },
+              select: { role: true },
+            },
+          },
+          take: pagination.limit,
+          skip: pagination.offset,
+          orderBy: { id: "asc" },
+        })
+      ).flatMap(({ memberships, ...company }) => {
+        const membership = memberships[0];
+        // Fail closed if a membership disappeared during relation loading.
+        return membership
+          ? [{ ...company, membershipRole: membership.role }]
+          : [];
       }),
       pagination,
     };

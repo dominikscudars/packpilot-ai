@@ -3,12 +3,13 @@ import {
   WorkspaceProvider,
   useWorkspace,
 } from "./components/WorkspaceProvider";
+import { AuthGate, type AppServices } from "./components/AuthGate";
 import { Dashboard } from "./pages/Dashboard";
 import { CompanyProfile } from "./pages/CompanyProfile";
 import { Simulator } from "./pages/Simulator";
 import { Inventory } from "./pages/Inventory";
 function Shell() {
-  const { workspace, notice } = useWorkspace();
+  const { company, mode } = useWorkspace();
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main">
@@ -26,9 +27,9 @@ function Shell() {
         </Link>
         <div className="workspace-label">WORKSPACE</div>
         <div className="company-badge">
-          <span>{workspace.company.name.slice(0, 2).toUpperCase()}</span>
+          <span>{company.name.slice(0, 2).toUpperCase()}</span>
           <div>
-            <strong>{workspace.company.name || "Company"}</strong>
+            <strong>{company.name || "Company"}</strong>
             <small>Pilot workspace</small>
           </div>
         </div>
@@ -46,7 +47,7 @@ function Shell() {
           ))}
         </nav>
         <div className="sidebar-footer">
-          <span className="live-dot" /> Foundation release
+          <span className="live-dot" /> Pilot release
           <p>
             Built for informed
             <br />
@@ -58,19 +59,14 @@ function Shell() {
         <div className="topbar">
           <span>
             Workspace <span className="slash">/</span>{" "}
-            <strong>{workspace.company.name || "Company"}</strong>
+            <strong>{company.name || "Company"}</strong>
           </span>
           <span className="storage-status">
             <span className="live-dot" />
-            {notice ? "Storage needs attention" : "Local browser workspace"}
+            {mode === "demo" ? "Local demo" : "Connected company workspace"}
           </span>
         </div>
         <main id="main" tabIndex={-1}>
-          {notice && (
-            <div className="error" role="status">
-              {notice}
-            </div>
-          )}
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/company" element={<CompanyProfile />} />
@@ -87,7 +83,7 @@ function Shell() {
             />
           </Routes>
           <footer className="page-footer">
-            <span>PackPilot AI · Initial MVP</span>
+            <span>PackPilot AI · Pilot release</span>
             <span>Deterministic calculations. Transparent assumptions.</span>
           </footer>
         </main>
@@ -95,10 +91,14 @@ function Shell() {
     </div>
   );
 }
-export default function App() {
+export default function App({ services }: { services?: AppServices }) {
   return (
-    <WorkspaceProvider>
-      <Shell />
-    </WorkspaceProvider>
+    <AuthGate services={services}>
+      {(gateway, mode, exit) => (
+        <WorkspaceProvider gateway={gateway} mode={mode} exit={exit}>
+          <Shell />
+        </WorkspaceProvider>
+      )}
+    </AuthGate>
   );
 }

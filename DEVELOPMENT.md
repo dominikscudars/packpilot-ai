@@ -1,17 +1,17 @@
 # Developing PackPilot AI
 
-Use Node.js 24 LTS (see `.nvmrc`) and npm. The repository contains a standalone frontend; no secrets or backend service are needed.
+Use Node.js 24 LTS (see `.nvmrc`) and npm. The local demo runs without secrets or a backend. Authenticated company mode connects to Supabase and the API; see [FRONTEND_INTEGRATION.md](FRONTEND_INTEGRATION.md).
 
 ```sh
 git clone https://github.com/dominikscudars/packpilot-ai.git
 cd packpilot-ai
 # For this initial implementation, until its PR is merged:
-git switch feat/mvp-foundation
+git switch feat/frontend-integration
 npm ci
 npm run dev
 ```
 
-Open the URL printed by Vite (normally http://localhost:5173). Browser local storage automatically persists valid edits under `packpilot.workspace.v1`; each browser has its own copy. The first visit loads `src/demo/ogTofu.ts`. To reset deliberately, remove that key in your browser's developer tools and reload; this discards local inputs. The simulator's “Copy current inputs” button replaces only the alternative with current-operation inputs.
+Open the URL printed by Vite (normally http://localhost:5173). Choose **Open local demo** explicitly. Save actions persist demo records under `packpilot.demo.v2`; the old `packpilot.workspace.v1` record is left untouched and never uploaded. Authenticated profiles are saved through the API only. See [frontend setup](FRONTEND_INTEGRATION.md) for Supabase variables, offline HTTP integration tests and limitations.
 
 ## Checks
 
@@ -29,11 +29,11 @@ npm run preview
 ```text
 src/
   components/    shared UI, workspace state and input controls
-  pages/         dashboard, profile, simulator, inventory placeholder
+  pages/         dashboard, profile, simulator, inventory planning
   models/        explicit unit-bearing interfaces and runtime schemas
-  calculations/  pure packaging cost engine
+  calculations/  historical engine (current UI uses backend pure engines)
   optimization/  deterministic scenario comparison (no optimizer yet)
-  inventory/     documented boundary for future planning functions
+  inventory/     historical planning boundary
   demo/          editable OG TOFU fixture with source notes
   storage/       versioned, validated local persistence
   tests/         engine, storage and component regression tests

@@ -232,6 +232,16 @@ describe("company authorization", () => {
   );
   it("filters lists and pagination to the current membership", async () => {
     const a = await request(owner, { url: "/api/v1/companies" });
+    expect(
+      a.json().data.find((c: { id: string }) => c.id === "og-tofu")
+        .membershipRole,
+    ).toBe("owner");
+    const memberList = await request(member, { url: "/api/v1/companies" });
+    expect(
+      memberList.json().data.find((c: { id: string }) => c.id === "og-tofu")
+        .membershipRole,
+    ).toBe("member");
+    expect(a.json().data[0]).not.toHaveProperty("memberships");
     const b = await request(outsider, {
       url: "/api/v1/companies?limit=1&offset=0",
     });

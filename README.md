@@ -421,7 +421,7 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for installation, running the app and colla
 
 ## Backend foundation (local demo)
 
-The independent Node.js/TypeScript API is in [`backend/`](backend/README.md). It provides SQLite persistence, packaging calculations, scenario comparison and inventory planning. The existing frontend still uses local browser storage.
+The independent Node.js/TypeScript API is in [`backend/`](backend/README.md). It provides SQLite persistence, packaging calculations, scenario comparison and inventory planning. The React frontend now connects to the authenticated API and offers a separate explicit local demo. See [Frontend integration](FRONTEND_INTEGRATION.md).
 
 ```sh
 cd backend
@@ -435,4 +435,4 @@ npm run members:bootstrap -- og-tofu 11111111-1111-4111-8111-111111111111
 npm run dev
 ```
 
-See [backend/README.md](backend/README.md) for contracts, examples, rounding, tests and the authenticated API contract. [Authentication setup](backend/AUTHENTICATION.md) covers Supabase, signed local development tokens, company memberships and the remaining deployment requirements. The frontend is not connected to this API yet.
+See [backend/README.md](backend/README.md) for contracts, examples, rounding, tests and the authenticated API contract. [Authentication setup](backend/AUTHENTICATION.md) covers Supabase, signed local development tokens, company memberships and the remaining deployment requirements. Frontend sign-in, company records, saved scenarios and inventory calculations are connected; see [frontend setup](FRONTEND_INTEGRATION.md).

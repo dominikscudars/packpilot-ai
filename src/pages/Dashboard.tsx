@@ -1,62 +1,36 @@
-import { Link } from "react-router-dom";
 import { useWorkspace } from "../components/WorkspaceProvider";
-import { ScenarioEditor } from "../components/ScenarioEditor";
-import { Results, evaluate } from "../components/Results";
+import { useRequest, RequestState } from "../components/AsyncState";
+import { ApiResults } from "../components/ApiResults";
+import { ScenarioPanel } from "../components/ScenarioPanel";
 export function Dashboard() {
-  const { workspace, update } = useWorkspace();
-  const { result, error } = evaluate(workspace.baseline, workspace);
+  const { baseline, setBaseline, gateway, mode } = useWorkspace();
+  const state = useRequest(JSON.stringify(baseline.input), () =>
+    gateway.calculate(baseline.input),
+  );
   return (
     <>
       <header className="page-heading">
         <div>
           <span className="eyebrow">YOUR PACKAGING OPERATIONS</span>
           <h1>Overview</h1>
-          <p>A clearer view of your packaging costs, one input at a time.</p>
-        </div>
-        <Link className="button" to="/simulator">
-          Explore a scenario <span aria-hidden="true">→</span>
-        </Link>
-      </header>
-      <div className="notice">
-        <strong>OG TOFU demonstration</strong>
-        <span>
-          The original demo mix of 80% / 15% / 5% is hypothetical. Prices and
-          production are estimates; edited values are assumptions.
-        </span>
-      </div>
-      <section className="panel production-bar">
-        <div>
-          <span className="eyebrow">MONTHLY PRODUCTION</span>
-          <h2>Plan your next month</h2>
-          <p className="muted">
-            Change volume to recalculate your current operation.
-          </p>
-        </div>
-        <ScenarioEditor
-          compact
-          scenario={workspace.baseline}
-          onChange={(baseline) => update({ ...workspace, baseline })}
-        />
-      </section>
-      {error && (
-        <div className="error" role="alert">
-          {error} <Link to="/company">Review profile inputs</Link>
-        </div>
-      )}
-      {result && <Results result={result} catalog={workspace} />}
-      <section className="insight-strip">
-        <div className="insight-icon" aria-hidden="true">
-          i
-        </div>
-        <div>
-          <h3>Good decisions start with clear assumptions.</h3>
           <p>
-            Labor hours assume the recorded cycle time and staffing for each
-            format. Setup, cleaning and downtime are not included.
+            {mode === "demo"
+              ? "Explore packaging costs with hypothetical pilot inputs."
+              : "Review costs and production for your selected company."}
           </p>
         </div>
-        <Link to="/company">Review inputs →</Link>
-      </section>
+      </header>
+      <RequestState
+        error={state.error}
+        onRetry={state.retry}
+        loading={!state.data && !state.error}
+      />
+      {state.data && <ApiResults result={state.data} input={baseline.input} />}
+      <ScenarioPanel
+        title="Current operation"
+        draft={baseline}
+        onChange={setBaseline}
+      />
     </>
   );
 }

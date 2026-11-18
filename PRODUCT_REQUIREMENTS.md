@@ -64,3 +64,11 @@ The backend now verifies Supabase Auth access tokens with jose and authorizes da
 Acceptance: missing/invalid/expired tokens cannot access business data or calculators; company lists and all data routes enforce membership; only owners manage memberships/company metadata/deletion; new companies acquire an owner atomically; existing data requires explicit administrator bootstrap; final-owner removal is blocked; JWT metadata cannot elevate access; exact origins and hosts are configurable; local/test signed tokens need no cloud credentials and cannot be enabled in production. Existing formulas and calculation tests remain unchanged.
 
 Out of scope: live Supabase provisioning, frontend login/API integration, email invitations, public deployment, PostgreSQL migration and Auth-session introspection. Required environment variables, operational limits, ownership onboarding and production prerequisites are documented in [backend/AUTHENTICATION.md](backend/AUTHENTICATION.md).
+
+## Phase 3 frontend integration (current)
+
+Supabase email/password sign-in, sign-out and session renewal now gate API company access. The frontend loads membership-filtered companies, catalog records and saved scenarios, supports explicit profile/product/scenario/stock saves, and uses authenticated backend calculations for dashboard, simulator and inventory. The local demo is selected explicitly and uses the same pure engines with isolated browser storage. Legacy browser records are never uploaded.
+
+The current rounding contract supersedes the initial frontend policy above: mass-preserving whole-package allocation, explicit unpackaged mass/mix deviations and continuous machine throughput. Exact OG TOFU reference results remain unchanged. Loading, empty, validation, network and expired-session states are visible. Company/identity switches discard unsaved drafts and ignore late responses.
+
+Full catalog onboarding, membership UI, signup/recovery/invitations, persisted inventory forecasts, conflict history, live Supabase provisioning and deployment remain out of scope. See [FRONTEND_INTEGRATION.md](FRONTEND_INTEGRATION.md) for variables, tests, security boundaries and deployment requirements.

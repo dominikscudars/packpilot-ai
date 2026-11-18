@@ -1,5 +1,13 @@
 # Packaging calculation contract
 
+## Current application policy (Phase 3)
+
+The authenticated UI displays API results; the explicit local demo uses the same pure engines in `backend/src/calculation-engine`. The backend policy in [backend/README.md](backend/README.md#formulas-and-rounding) is authoritative. Whole packages preserve available production mass, report any unfilled kg and mix deviations, and use continuous throughput rather than rounded whole machine cycles. Exact shares total 100%; decimal-string inputs preserve provenance. Recurring operating costs and investment are separate and remain unknown unless supplied. The original OG TOFU reference below is unchanged. At 1.125 kg in that mix, 1 kg is packed and 0.125 kg remains unpackaged.
+
+The following documents the **historical Phase 1 engine**, retained with its original tests for compatibility. It is not used by the current UI. Legacy browser profiles are not automatically migrated or uploaded because their rounding semantics differ. See [FRONTEND_INTEGRATION.md](FRONTEND_INTEGRATION.md).
+
+## Historical engine
+
 The engine is `src/calculations/packaging.ts`. All outputs are monthly estimates, not financial quotations. Values are finite JS numbers at API boundaries; decimal.js (40-digit precision) performs decimal arithmetic. Euro amounts retain fractional cents in the engine; the UI formats totals to two decimals and euro/kg to three. No intermediate per-package price rounding takes place.
 
 ## Production and package requirements
