@@ -329,3 +329,31 @@ describe("scenario comparison", () => {
     ).toBeNull();
   });
 });
+describe("incomplete machine assignment", () => {
+  it("does not turn unknown equipment costs into savings or payback", () => {
+    const baseline = complete(),
+      alternative = complete();
+    baseline.machines[0].maintenanceEuroPerMonth = q("100");
+    alternative.formats[0].machineId = null;
+    const costs = calculatePackaging(alternative);
+    expect(costs.totalPackagingOperatingEuro).toBe("286");
+    expect(costs.recurringOperatingEuroPerMonth).toBeNull();
+    expect(costs.investmentEuro).toBeNull();
+    const comparison = compareScenarios({
+      baseline,
+      alternative,
+      sameProductAndDemand: true,
+    });
+    expect(comparison.monthlyNetSavingsEuro).toBeNull();
+    expect(comparison.simplePaybackMonths).toBeNull();
+  });
+  it("does not charge or require equipment for an unused zero-share format", () => {
+    const scenario = complete();
+    scenario.formats[0].allocationPercent = q("0");
+    scenario.formats[0].machineId = null;
+    scenario.formats[1].allocationPercent = q("95");
+    expect(calculatePackaging(scenario).recurringOperatingEuroPerMonth).toBe(
+      "0",
+    );
+  });
+});

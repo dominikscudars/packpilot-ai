@@ -1,3 +1,4 @@
+import { assertDatabaseReady } from "./shared/readiness.js";
 import cors from "@fastify/cors";
 import { installAuthentication, type SecurityOptions } from "./auth/access.js";
 import { membershipRoutes } from "./modules/memberships/routes.js";
@@ -27,7 +28,8 @@ export function buildApp(
     trustProxy: false,
   });
   const { security } = options;
-  app.addHook("onRequest", async (request) => {
+  app.addHook("onRequest", async (request, reply) => {
+    reply.header("Cache-Control", "no-store");
     if (
       security.mode === "local" &&
       !["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(request.ip)
@@ -92,9 +94,11 @@ export function buildApp(
           ? "UNAUTHENTICATED"
           : status === 404
             ? "NOT_FOUND"
-            : status === 403
-              ? "FORBIDDEN"
-              : "INVALID_REQUEST";
+            : status === 503
+              ? "SERVICE_UNAVAILABLE"
+              : status === 403
+                ? "FORBIDDEN"
+                : "INVALID_REQUEST";
       message = error.message;
     } else if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === "P2025") {
@@ -150,7 +154,7 @@ export function buildApp(
     }),
   );
   app.get("/api/v1/health", { config: { access: "public" } }, async () => {
-    await db.$queryRaw`SELECT 1`;
+    await assertDatabaseReady(db);
     return {
       data: { status: "ok", securityMode: security.mode, version: "v1" },
     };

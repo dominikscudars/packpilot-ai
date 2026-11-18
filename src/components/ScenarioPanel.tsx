@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useWorkspace, type Draft } from "./WorkspaceProvider";
 import { ScenarioEditor } from "./ScenarioEditor";
 import { message, RequestState } from "./AsyncState";
@@ -15,12 +15,24 @@ export function ScenarioPanel({
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [notice, setNotice] = useState("");
+  const mounted = useRef(false);
+  const currentDraft = useRef(draft);
+  useEffect(() => {
+    currentDraft.current = draft;
+  }, [draft]);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   async function save(asNew: boolean) {
     setBusy(true);
     setError("");
     setNotice("");
     try {
       const saved = await saveScenario(draft, asNew);
+      if (!mounted.current || currentDraft.current !== draft) return;
       onChange(saved);
       setNotice(
         mode === "demo"
@@ -28,9 +40,9 @@ export function ScenarioPanel({
           : "Scenario saved to your company.",
       );
     } catch (e) {
-      setError(message(e));
+      if (mounted.current) setError(message(e));
     } finally {
-      setBusy(false);
+      if (mounted.current) setBusy(false);
     }
   }
   return (

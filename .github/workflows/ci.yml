@@ -53,3 +53,5 @@ jobs:
         env:
           DATABASE_URL: file:./dev.db
       - run: npm run test:integration
+      - run: npm run build --prefix backend
+      - run: npm run test:staging

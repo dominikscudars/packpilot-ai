@@ -11,7 +11,8 @@
     "preview": "vite preview --host 0.0.0.0",
     "format": "prettier --write src",
     "format:check": "prettier --check src",
-    "test:integration": "node --import ./backend/node_modules/tsx/dist/loader.mjs --test scripts/frontend-api.integration.test.mjs"
+    "test:integration": "node --import ./backend/node_modules/tsx/dist/loader.mjs --test scripts/frontend-api.integration.test.mjs",
+    "test:staging": "node --import ./backend/node_modules/tsx/dist/loader.mjs --test scripts/staging.integration.test.mjs"
   },
   "repository": {
     "type": "git",

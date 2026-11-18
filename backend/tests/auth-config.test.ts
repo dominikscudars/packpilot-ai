@@ -1,6 +1,6 @@
 import { afterEach, describe, it, expect, vi } from "vitest";
 import { SignJWT } from "jose";
-import { loadServerConfig } from "../src/config/env.js";
+import { loadConfig, loadServerConfig } from "../src/config/env.js";
 import { createSupabaseVerifier } from "../src/auth/tokens.js";
 import { createAuthFixture, OWNER } from "./authFixture.js";
 afterEach(() => vi.unstubAllGlobals());
@@ -11,7 +11,11 @@ describe("production configuration fails closed", () => {
   });
   it("never enables local authentication in production or on a public bind address", () => {
     expect(() =>
-      loadServerConfig({ NODE_ENV: "production", AUTH_MODE: "local" }),
+      loadServerConfig({
+        NODE_ENV: "production",
+        DATABASE_URL: "file:/var/data/test.db",
+        AUTH_MODE: "local",
+      }),
     ).toThrow();
     expect(() =>
       loadServerConfig({ AUTH_MODE: "local", HOST: "0.0.0.0" }),
@@ -40,6 +44,7 @@ describe("production configuration fails closed", () => {
       expect(() =>
         loadServerConfig({
           NODE_ENV: "production",
+          DATABASE_URL: "file:/var/data/test.db",
           SUPABASE_URL: "https://project.supabase.co",
           ALLOWED_ORIGINS: origin,
         }),
@@ -49,6 +54,7 @@ describe("production configuration fails closed", () => {
     expect(
       loadServerConfig({
         NODE_ENV: "production",
+        DATABASE_URL: "file:/var/data/test.db",
         AUTH_MODE: "supabase",
         SUPABASE_URL: "https://project.supabase.co/",
         HOST: "0.0.0.0",
@@ -103,5 +109,31 @@ describe("Supabase JWKS verification without a cloud account", () => {
       "https://example-project.supabase.co",
     );
     await expect(verify(await f.token())).rejects.toThrow();
+  });
+});
+
+describe("production database configuration", () => {
+  it.each([
+    undefined,
+    "file:./dev.db",
+    "file::memory:",
+    "file:/var/data/db.sqlite?mode=memory",
+  ])("rejects an implicit/relative/ephemeral database: %s", (DATABASE_URL) => {
+    const env = {
+      NODE_ENV: "production",
+      SUPABASE_URL: "https://project.supabase.co",
+      DATABASE_URL,
+    };
+    expect(() => loadConfig(env)).toThrow(/DATABASE_URL/);
+    expect(() => loadServerConfig(env)).toThrow(/DATABASE_URL/);
+  });
+  it("accepts an explicitly configured absolute database and retains local defaults", () => {
+    expect(
+      loadConfig({
+        NODE_ENV: "production",
+        DATABASE_URL: "file:/var/data/packpilot/staging.db",
+      }).DATABASE_URL,
+    ).toBe("file:/var/data/packpilot/staging.db");
+    expect(loadConfig({}).DATABASE_URL).toBe("file:./dev.db");
   });
 });

@@ -69,7 +69,7 @@ npm run build --prefix backend
 npm run test:integration
 ```
 
-Root tests cover the existing calculation/storage regressions, shared allocation policy, explicit demo saves, sign-in/out and expired sessions, bearer requests, refresh concurrency, account/company changes, authoritative API results, profile/scenario/inventory saves, loading/errors/empty access, key validation and prevention of implicit browser uploads. UI tests mock transport and chart geometry. The additional HTTP suite creates a temporary migrated SQLite database, generates ephemeral ES256 keys, uses actual Fastify/jose/Prisma and exercises the production frontend API client. It neither reads nor modifies the local development database. GitHub Actions runs all three suites.
+Root tests cover the existing calculation/storage regressions, shared allocation policy, explicit demo saves, sign-in/out and expired sessions, bearer requests, refresh concurrency, account/company changes, authoritative API results, profile/scenario/inventory saves, loading/errors/empty access, key validation and prevention of implicit browser uploads. UI tests mock transport and chart geometry. The additional HTTP suite creates a temporary migrated SQLite database, generates ephemeral ES256 keys, uses actual Fastify/jose/Prisma and exercises the production frontend API client. It neither reads nor modifies the local development database. GitHub Actions runs the frontend, backend, HTTP integration and compiled staging rehearsal suites.
 
 ## Deployment still required
 
@@ -85,3 +85,7 @@ No merge or deployment is part of this phase. Before a public release, review th
 - `git diff --check` passed. Test keys, databases, build output, screenshots and local environment files are not committed. The HTTP integration test is checked in and runs in CI; the browser checks above were local smoke checks, not a new Playwright CI suite.
 
 Live Supabase login/refresh, deployed CORS/HTTPS and hosting behavior remain to be verified with the intended project and domains. Nothing has been merged or deployed by this task.
+
+## Phase 4 integration fixes
+
+Demand confirmation is bound to the exact compared input snapshots. A completed scenario save updates the editor only if that editor and draft are still current, so navigation or copying current inputs cannot be undone by a late response. The requested snapshot still saves on the server. See [RELEASE_REVIEW.md](RELEASE_REVIEW.md) for regressions and [STAGING_PLAN.md](STAGING_PLAN.md) for frontend environment variables and live acceptance checks.

@@ -442,3 +442,94 @@ it("keeps a rejected profile draft visible without claiming it was saved", async
   expect(screen.getByLabelText("Company name")).toHaveValue("Unsaved edit");
   expect(screen.queryByText("Company profile saved.")).toBeNull();
 });
+it("invalidates demand confirmation when the compared scenario inputs change", async () => {
+  await openDemo("/simulator");
+  await screen.findByLabelText("Monthly production (kg)");
+  const confirmation = screen.getByRole("checkbox", {
+    name: /same product and demand/,
+  });
+  fireEvent.click(confirmation);
+  expect(confirmation).toBeChecked();
+  change("Monthly production (kg)", "2000");
+  expect(confirmation).not.toBeChecked();
+});
+it("does not let a save from an unmounted editor overwrite a newer draft", async () => {
+  const { auth } = authFixture(),
+    { fetcher } = apiFixture();
+  const normal = fetcher.getMockImplementation()!;
+  let release!: () => void;
+  const delayed = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  fetcher.mockImplementation(async (url, init) => {
+    if (init?.method === "PATCH" && String(url).includes("/scenarios/"))
+      await delayed;
+    return normal(url, init);
+  });
+  mount("/", { auth, apiUrl: "http://localhost:3001", error: null, fetcher });
+  await screen.findByLabelText("Monthly production (kg)");
+  change("Monthly production (kg)", "2000");
+  fireEvent.click(screen.getByRole("button", { name: "Save scenario" }));
+  await waitFor(() =>
+    expect(
+      fetcher.mock.calls.some(
+        ([url, init]) =>
+          String(url).includes("/scenarios/") && init?.method === "PATCH",
+      ),
+    ).toBe(true),
+  );
+  fireEvent.click(screen.getByRole("link", { name: /Company profile/ }));
+  await screen.findByLabelText("Company name");
+  fireEvent.click(screen.getByRole("link", { name: /Overview/ }));
+  change("Monthly production (kg)", "3000");
+  await act(async () => {
+    release();
+    await delayed;
+  });
+  await waitFor(() =>
+    expect(screen.getByLabelText("Monthly production (kg)")).toHaveValue(
+      "3000",
+    ),
+  );
+});
+it("keeps copied current inputs when an earlier alternative save completes", async () => {
+  const { auth } = authFixture(),
+    { fetcher } = apiFixture();
+  const normal = fetcher.getMockImplementation()!;
+  let release!: () => void;
+  const delayed = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  fetcher.mockImplementation(async (url, init) => {
+    if (init?.method === "POST" && String(url).endsWith("/scenarios"))
+      await delayed;
+    return normal(url, init);
+  });
+  mount("/simulator", {
+    auth,
+    apiUrl: "http://localhost:3001",
+    error: null,
+    fetcher,
+  });
+  await screen.findByLabelText("Monthly production (kg)");
+  change("Monthly production (kg)", "2000");
+  fireEvent.click(screen.getByRole("button", { name: "Save as new scenario" }));
+  await waitFor(() =>
+    expect(
+      fetcher.mock.calls.some(
+        ([url, init]) =>
+          String(url).endsWith("/scenarios") && init?.method === "POST",
+      ),
+    ).toBe(true),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Copy current inputs" }));
+  await act(async () => {
+    release();
+    await delayed;
+  });
+  await waitFor(() =>
+    expect(screen.getByLabelText("Monthly production (kg)")).toBeEnabled(),
+  );
+  expect(screen.getByLabelText("Monthly production (kg)")).toHaveValue("1000");
+  expect(screen.queryByText("Scenario saved to your company.")).toBeNull();
+});

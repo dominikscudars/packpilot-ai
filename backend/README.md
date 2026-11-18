@@ -109,7 +109,7 @@ Successful responses use `{ "data": ... }`. Lists also return `{ "pagination": {
 
 | Method             | Path                                           | Body / behavior                                   |
 | ------------------ | ---------------------------------------------- | ------------------------------------------------- |
-| GET                | `/api/v1/health`                               | Database connectivity and authentication mode     |
+| GET                | `/api/v1/health`                               | Database schema readiness and authentication mode     |
 | GET, POST          | `/api/v1/companies`                            | List / create company                             |
 | GET, PATCH, DELETE | `/api/v1/companies/:id`                        | Read / edit / delete unreferenced company         |
 | GET, POST          | `/api/v1/companies/:companyId/:collection`     | List / create company-owned records               |
@@ -120,7 +120,7 @@ Successful responses use `{ "data": ... }`. Lists also return `{ "pagination": {
 
 Collections: **products, suppliers, materials, formats, machines, inventory, scenarios**. Owner-only membership endpoints are documented in [AUTHENTICATION.md](AUTHENTICATION.md). List query parameters are `limit` and `offset`. References restrict deletion; deleting a scenario removes its join records but leaves the catalog intact. Referential conflicts return 409.
 
-Errors use `{ "error": { "code", "message", "requestId", "details"? } }`. Statuses: 400 malformed/schema-invalid request; 401 invalid/missing authentication; 403 role/origin/host restriction; 404 missing record/endpoint; 409 relation/uniqueness conflict; 413 oversized body; 422 invalid calculation/domain model; 500 generic internal failure. Schema details contain paths and messages, never submitted values or SQL.
+Errors use `{ "error": { "code", "message", "requestId", "details"? } }`. Statuses: 400 malformed/schema-invalid request; 401 invalid/missing authentication; 403 role/origin/host restriction; 404 missing record/endpoint; 409 relation/uniqueness conflict; 413 oversized body; 422 invalid calculation/domain model; 500 generic internal failure; 503 database readiness failure. Schema details contain paths and messages, never submitted values or SQL.
 
 ### Executable examples
 
@@ -215,3 +215,11 @@ There is no migration of existing browser data, machine batch scheduling, multi-
 Keep domain/calculation modules free of Fastify and Prisma. Validate at request boundaries and public engine entry points. Record changes to formulas, input quality and rounding in this document with regression tests. Foreign-key and CHECK protections must remain covered by real-database tests.
 
 Prisma 6 is deliberately pinned by the lockfile for its straightforward SQLite runtime. To move to PostgreSQL, change the datasource provider, configure its URL, generate a **new PostgreSQL migration history**, copy validated data and regenerate the client. Do not replay SQLite SQL on PostgreSQL. IDs/relationships and JSON decimal-string quantities can remain unchanged (PostgreSQL JSONB supports them). If indexed financial aggregates are needed, migrate selected decimal strings to explicit NUMERIC columns with matching provenance fields. Preserve the inventory CHECK and composite company-scoped constraints. Test the target database before deployment; this phase only executes SQLite.
+
+## Release readiness operations
+
+See [STAGING_PLAN.md](../STAGING_PLAN.md) for the production environment and persistent disk requirements. Production requires an explicit absolute SQLite `DATABASE_URL`; startup checks that the membership table is queryable before listening. Health reports a generic 503 if it cannot query that table. Responses include `Cache-Control: no-store`.
+
+`npm run start:staging` applies migrations before starting the compiled server. After a build, `npm run db:backup -- <new-absolute-backup-file>` creates an integrity-checked, consistent SQLite snapshot and refuses to overwrite an existing file. Copy backups off-host and rehearse restores; the command does not schedule or upload them.
+
+A positive-share format with no assigned machine leaves recurring costs and investment unknown, even if the known machine subset has zero costs. It does not prevent known material/per-package labor totals. A zero-share unassigned format does not invalidate those equipment costs. This Phase 4 correction preserves the exact reference totals.

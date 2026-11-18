@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { isAbsolute } from "node:path";
 import { z } from "zod";
 const baseSchema = z.object({
   DATABASE_URL: z.string().startsWith("file:").default("file:./dev.db"),
@@ -8,8 +9,19 @@ const baseSchema = z.object({
     .enum(["silent", "error", "warn", "info", "debug"])
     .default("info"),
 });
+// An omitted production URL must not create an ephemeral working-directory database.
+function requireProductionDatabase(env: NodeJS.ProcessEnv) {
+  if (env.NODE_ENV !== "production") return;
+  const url = env.DATABASE_URL;
+  const file = url?.startsWith("file:") ? url.slice(5) : "";
+  if (!file || !isAbsolute(file) || file.startsWith("//") || /[?#]/.test(file))
+    throw new Error(
+      "Production DATABASE_URL must be an explicit absolute SQLite file path on persistent storage, without URL parameters.",
+    );
+}
 // Database commands do not need an identity provider configuration.
 export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
+  requireProductionDatabase(env);
   return baseSchema.parse(env);
 }
 const serverSchema = baseSchema
@@ -107,6 +119,7 @@ const serverSchema = baseSchema
     };
   });
 export function loadServerConfig(env: NodeJS.ProcessEnv = process.env) {
+  requireProductionDatabase(env);
   return serverSchema.parse(env);
 }
 export type ServerConfig = ReturnType<typeof loadServerConfig>;

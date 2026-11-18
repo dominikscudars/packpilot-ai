@@ -436,3 +436,7 @@ npm run dev
 ```
 
 See [backend/README.md](backend/README.md) for contracts, examples, rounding, tests and the authenticated API contract. [Authentication setup](backend/AUTHENTICATION.md) covers Supabase, signed local development tokens, company memberships and the remaining deployment requirements. Frontend sign-in, company records, saved scenarios and inventory calculations are connected; see [frontend setup](FRONTEND_INTEGRATION.md).
+
+## Release readiness
+
+Phase 4 reviews PRs #1–#4 together and fixes calculation, save-race and production configuration issues. See [release review and validation](RELEASE_REVIEW.md) and the [staging runbook](STAGING_PLAN.md) for Vercel, Supabase Auth, persistent backend hosting, ownership, backups and remaining account decisions. Nothing has been merged or deployed.

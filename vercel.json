@@ -1,1 +1,15 @@
-{ "rewrites": [{ "source": "/((?!assets/).*)", "destination": "/index.html" }] }
+{
+  "rewrites": [
+    {
+      "source": "/((?!assets/).*)",
+      "destination": "/index.html"
+    }
+  ],
+  "git": {
+    "deploymentEnabled": false
+  },
+  "framework": "vite",
+  "installCommand": "npm ci",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist"
+}

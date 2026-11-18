@@ -10,7 +10,9 @@ import {
 import { ScenarioPanel } from "../components/ScenarioPanel";
 export function Simulator() {
   const { baseline, alternative, setAlternative, gateway } = useWorkspace();
-  const [sameDemand, setSameDemand] = useState(false);
+  const comparisonKey = JSON.stringify([baseline.input, alternative.input]);
+  const [confirmedInputs, setConfirmedInputs] = useState<string | null>(null);
+  const sameDemand = confirmedInputs === comparisonKey;
   const state = useRequest(
     JSON.stringify([baseline.input, alternative.input, sameDemand]),
     () => gateway.compare(baseline.input, alternative.input, sameDemand),
@@ -34,7 +36,7 @@ export function Simulator() {
               name: "Alternative scenario",
               input: structuredClone(baseline.input),
             });
-            setSameDemand(false);
+            setConfirmedInputs(null);
           }}
         >
           Copy current inputs
@@ -44,7 +46,9 @@ export function Simulator() {
         <input
           type="checkbox"
           checked={sameDemand}
-          onChange={(e) => setSameDemand(e.target.checked)}
+          onChange={(e) =>
+            setConfirmedInputs(e.target.checked ? comparisonKey : null)
+          }
         />
         I confirm both scenarios represent the same product and demand.
       </label>

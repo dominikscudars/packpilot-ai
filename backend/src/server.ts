@@ -1,3 +1,4 @@
+import { assertDatabaseReady } from "./shared/readiness.js";
 import { PrismaClient } from "@prisma/client";
 import { loadServerConfig } from "./config/env.js";
 import { createSecurity } from "./auth/runtime.js";
@@ -18,6 +19,7 @@ for (const signal of ["SIGINT", "SIGTERM"] as const)
   });
 try {
   await db.$connect();
+  await assertDatabaseReady(db);
   await app.listen({ host: config.HOST, port: config.PORT });
 } catch {
   app.log.error(

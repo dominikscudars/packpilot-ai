@@ -397,3 +397,28 @@ describe("REST API with real migrated SQLite database", () => {
     ).toThrow();
   });
 });
+
+it("reports an unmigrated database as unavailable rather than healthy", async () => {
+  const empty = new PrismaClient({
+    datasourceUrl: `file:${join(directory, "unmigrated.db")}`,
+  });
+  const fixture = await createAuthFixture();
+  const unready = buildApp(empty, { security: fixture.security });
+  try {
+    const response = await unready.inject({ url: "/api/v1/health" });
+    expect(response.statusCode).toBe(503);
+    expect(response.json().error.code).toBe("SERVICE_UNAVAILABLE");
+    expect(response.body).not.toContain("CompanyMembership");
+  } finally {
+    await unready.close();
+    await empty.$disconnect();
+  }
+});
+it("prevents caching of authenticated data and errors", async () => {
+  for (const response of [
+    await authenticatedInject({ url: "/api/v1/companies" }),
+    await app.inject({ url: "/api/v1/companies" }),
+  ]) {
+    expect(response.headers["cache-control"]).toBe("no-store");
+  }
+});

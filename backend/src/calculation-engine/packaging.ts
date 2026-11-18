@@ -131,14 +131,25 @@ export function calculatePackaging(raw: ScenarioInput) {
   const operating = total([material, labor]);
   const machineHours = total(decimalRows.map((r) => r.machineHours));
   const personHours = total(decimalRows.map((r) => r.personHours));
-  const recurring = total([
-    decimal(input.additionalOperatingEuroPerMonth),
-    ...used.map((m) => decimal(m.maintenanceEuroPerMonth)),
-  ]);
+  const hasUnassignedWork = input.formats.some(
+    (f) =>
+      f.machineId === null &&
+      known(f.allocationPercent, "Allocation percentage").gt(0),
+  );
+  const recurring = hasUnassignedWork
+    ? null
+    : total([
+        decimal(input.additionalOperatingEuroPerMonth),
+        ...used.map((m) => decimal(m.maintenanceEuroPerMonth)),
+      ]);
   const investment =
-    used.length === 0
+    used.length === 0 || hasUnassignedWork
       ? null
       : total(used.map((m) => decimal(m.investmentEuro)));
+  if (hasUnassignedWork)
+    warnings.push(
+      "Equipment is unassigned for a positive-share format; recurring costs and investment are unknown.",
+    );
   if (material === null)
     warnings.push(
       "Material cost is unknown: at least one required price is missing.",

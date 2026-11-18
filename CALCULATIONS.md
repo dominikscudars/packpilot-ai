@@ -1,10 +1,14 @@
 # Packaging calculation contract
 
-## Current application policy (Phase 3)
+## Current application policy
 
 The authenticated UI displays API results; the explicit local demo uses the same pure engines in `backend/src/calculation-engine`. The backend policy in [backend/README.md](backend/README.md#formulas-and-rounding) is authoritative. Whole packages preserve available production mass, report any unfilled kg and mix deviations, and use continuous throughput rather than rounded whole machine cycles. Exact shares total 100%; decimal-string inputs preserve provenance. Recurring operating costs and investment are separate and remain unknown unless supplied. The original OG TOFU reference below is unchanged. At 1.125 kg in that mix, 1 kg is packed and 0.125 kg remains unpackaged.
 
 The following documents the **historical Phase 1 engine**, retained with its original tests for compatibility. It is not used by the current UI. Legacy browser profiles are not automatically migrated or uploaded because their rounding semantics differ. See [FRONTEND_INTEGRATION.md](FRONTEND_INTEGRATION.md).
+
+### Phase 4 missing-equipment correction
+
+A positive-share format with no assigned equipment makes total recurring equipment costs and investment unknown. It must not silently add zero or sum only the assigned subset when deciding savings/payback. Known material and per-package labor costs remain calculable; zero-share unassigned formats do not invalidate equipment totals. This changes neither allocation/rounding nor the exact OG TOFU reference.
 
 ## Historical engine
 
