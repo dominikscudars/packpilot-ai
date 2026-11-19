@@ -55,8 +55,7 @@ function Shell() {
           {(
             [
               { path: "/data", name: "1. Enter your data", icon: "form" },
-              { path: "/", name: "2. Your costs", icon: "overview" },
-              { path: "/advisor", name: "3. Market research", icon: "spark" },
+              { path: "/", name: "2. Your results", icon: "overview" },
             ] as const
           ).map((item) => (
             <NavLink key={item.path} to={item.path} end={item.path === "/"}>
@@ -65,10 +64,11 @@ function Shell() {
             </NavLink>
           ))}
         </nav>
-        <div className="nav-label">TOOLS</div>
-        <nav aria-label="Tools">
+        <div className="nav-label">FEATURES</div>
+        <nav aria-label="Features">
           {(
             [
+              { path: "/advisor", name: "Market research", icon: "spark" },
               { path: "/forecast", name: "Sales forecast", icon: "chart" },
               { path: "/reorder", name: "Stock & orders", icon: "box" },
               { path: "/survey", name: "Customer survey", icon: "survey" },

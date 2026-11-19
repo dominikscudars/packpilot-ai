@@ -203,7 +203,7 @@ export function Reorder() {
     <>
       <header className="page-heading">
         <div>
-          <span className="eyebrow">TOOL</span>
+          <span className="eyebrow">FEATURE</span>
           <h1>Stock &amp; orders</h1>
           <p>
             Count what you have on the shelf. PackPilot works out how fast you

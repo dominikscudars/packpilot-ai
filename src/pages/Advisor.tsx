@@ -105,7 +105,7 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
     <>
       <header className="page-heading">
         <div>
-          <span className="eyebrow">STEP 3 OF 3</span>
+          <span className="eyebrow">FEATURE</span>
           <h1>Market research</h1>
           <p>
             Ask about machinery, packaging materials, suppliers or EU and

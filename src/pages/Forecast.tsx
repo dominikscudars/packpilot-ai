@@ -76,7 +76,7 @@ export function Forecast() {
     <>
       <header className="page-heading">
         <div>
-          <span className="eyebrow">TOOL</span>
+          <span className="eyebrow">FEATURE</span>
           <h1>Sales forecast</h1>
           <p>
             Skip the typing: copy your monthly sales from Excel and paste them

@@ -48,7 +48,7 @@ export function Survey() {
     <>
       <header className="page-heading">
         <div>
-          <span className="eyebrow">TOOL</span>
+          <span className="eyebrow">FEATURE</span>
           <h1>Customer survey</h1>
           <p>
             Ask your customers which pack sizes and prices they want. PackPilot
