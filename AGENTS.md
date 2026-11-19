@@ -1,5 +1,7 @@
 # Development instructions
 
+Read [COLLABORATION.md](COLLABORATION.md) at the start of every task. It is the shared coordination guide for Dominik, Codex and Claude. Check current remote branches and open PRs before choosing a base or editing files; the recorded status is a dated snapshot, not a live lock.
+
 Read the entire README.md and PRODUCT_REQUIREMENTS.md before changing product behavior. Customer research is ongoing; speculative roadmap items are not approved implementation scope.
 
 ## Organization and TypeScript
