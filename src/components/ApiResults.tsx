@@ -79,11 +79,14 @@ export function ApiResults({
   result,
   input,
   afterMetrics,
+  afterBreakdown,
 }: {
   result: PackagingCostResult;
   input: ScenarioInput;
   /** Optional content shown right under the headline figures. */
   afterMetrics?: ReactNode;
+  /** Optional content between the cost breakdown and the calculation notes. */
+  afterBreakdown?: ReactNode;
 }) {
   return (
     <>
@@ -321,6 +324,7 @@ export function ApiResults({
           </p>
         </section>
       </div>
+      {afterBreakdown}
       <Notes data={result} />
     </>
   );

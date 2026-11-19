@@ -20,6 +20,7 @@ import { Advisor } from "./pages/Advisor";
 import { Reorder } from "./pages/Reorder";
 import { Survey } from "./pages/Survey";
 import { Forecast } from "./pages/Forecast";
+import { Brief } from "./pages/Brief";
 import { resetDemoStorage } from "./setup/resetDemo";
 function Shell({ exit }: { exit: () => void }) {
   const { company, mode, setupReady, reviewed } = useWorkspace();
@@ -163,6 +164,7 @@ function Shell({ exit }: { exit: () => void }) {
               <Route path="/simulator" element={<Navigate to="/" replace />} />
               <Route path="/reorder" element={<Reorder />} />
               <Route path="/survey" element={<Survey />} />
+              <Route path="/brief" element={<Brief />} />
               <Route path="/forecast" element={<Forecast />} />
               <Route
                 path="/inventory"

@@ -16,7 +16,8 @@ interface Item {
 }
 
 const LEAD_CHOICES = [7, 14, 21];
-const STORE_KEY = "packpilot.reorder.v1";
+/** Stock counts are kept per workspace scope so companies never share them. */
+const STORE_PREFIX = "packpilot.reorder.v1:";
 const note = "Entered on the reorder page; not independently verified.";
 const entered = (value: number) => assumed(String(value), note);
 
@@ -45,17 +46,17 @@ interface Saved {
   lead: string;
   boxKg: string;
 }
-function load(): Saved | null {
+function load(scope: string): Saved | null {
   try {
-    const raw = localStorage.getItem(STORE_KEY);
+    const raw = localStorage.getItem(STORE_PREFIX + scope);
     return raw ? (JSON.parse(raw) as Saved) : null;
   } catch {
     return null;
   }
 }
-function save(value: Saved) {
+function save(scope: string, value: Saved) {
   try {
-    localStorage.setItem(STORE_KEY, JSON.stringify(value));
+    localStorage.setItem(STORE_PREFIX + scope, JSON.stringify(value));
   } catch {
     // Browser storage is a convenience only; the page works without it.
   }
@@ -73,8 +74,8 @@ const STATUS_TEXT: Record<Status, string> = {
 
 /** Feature: when to reorder bags, labels and boxes, from the saved data. */
 export function Reorder() {
-  const { baseline, gateway, mode } = useWorkspace();
-  const saved = mode === "demo" ? load() : null;
+  const { baseline, gateway, mode, scope } = useWorkspace();
+  const saved = mode === "demo" ? load(scope) : null;
   const [stock, setStock] = useState<Record<string, string>>(
     saved?.stock ?? {},
   );
@@ -161,7 +162,7 @@ export function Reorder() {
 
   const remember = (next: Partial<Saved>) => {
     setCopied(false);
-    if (mode === "demo") save({ stock, moq, lead, boxKg, ...next });
+    if (mode === "demo") save(scope, { stock, moq, lead, boxKg, ...next });
   };
 
   const rows = items.map((item, i) => {

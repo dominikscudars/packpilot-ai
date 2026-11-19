@@ -5,8 +5,34 @@ import { decimalText } from "./ApiResults";
 const show = (q: Quantity, unit = "", digits = 0) =>
   q.value === null ? "not entered" : `${decimalText(q.value, digits)}${unit}`;
 
+/** Counts input values by source: reported, the user's entries, not entered. */
+export function sourceCounts(input: ScenarioInput) {
+  const counts = { reported: 0, entered: 0, missing: 0 };
+  const visit = (node: unknown) => {
+    if (!node || typeof node !== "object") return;
+    const record = node as Record<string, unknown>;
+    if ("quality" in record && "value" in record) {
+      if (record.quality === "missing") counts.missing++;
+      else if (record.quality === "reported" || record.quality === "verified")
+        counts.reported++;
+      else counts.entered++;
+      return;
+    }
+    Object.values(record).forEach(visit);
+  };
+  visit(input);
+  return counts;
+}
+
 /** Read-only "your data" card shown first on Packaging Insights and features. */
-export function DataSummary({ input }: { input: ScenarioInput }) {
+export function DataSummary({
+  input,
+  savedAt,
+}: {
+  input: ScenarioInput;
+  savedAt?: string | null;
+}) {
+  const counts = sourceCounts(input);
   const machine = input.machines.at(0);
   const cycle =
     machine?.throughput.method === "cycle" ? machine.throughput : null;
@@ -50,6 +76,12 @@ export function DataSummary({ input }: { input: ScenarioInput }) {
           </div>
         )}
       </dl>
+      <p className="data-sources" data-testid="data-sources">
+        Sources: {counts.reported} reported, {counts.entered} your entries or
+        estimates, {counts.missing} not entered.
+        {savedAt &&
+          ` Last saved ${new Date(savedAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}.`}
+      </p>
     </section>
   );
 }

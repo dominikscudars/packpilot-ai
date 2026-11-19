@@ -39,48 +39,77 @@ export function FeatureCards({
     {
       to: "/advisor",
       icon: "spark",
-      title: "Market research",
-      text: `Find machines, materials and suppliers that lower your ${money(result.packagingEuroPerPlannedKg, 3)} per kg, and check EU packaging rules.${gap}`,
+      title: "Research alternatives",
+      text: `Machines, materials and suppliers that could lower your ${money(result.packagingEuroPerPlannedKg, 3)} per kg, with sources, plus EU packaging rules.${gap}`,
       action: "Start research",
     },
     {
-      to: "/forecast",
-      icon: "chart",
-      title: "Sales forecast",
-      text: "Paste your sales from Excel and see the next six months, then update these costs in one click.",
-      action: "Open forecast",
+      to: "#test-change",
+      icon: "simulator",
+      title: "Test a cost change",
+      text: "Try a new material price, wage, production level or machine and compare it with today, without changing your data.",
+      action: "Test a change",
     },
     {
       to: "/reorder",
       icon: "box",
-      title: "Stock & orders",
+      title: "Plan stock",
       text: `You use about ${decimalText(result.totalPackages, 0)} bags and labels a month. Count your stock and get a ready order list.`,
       action: "Plan orders",
     },
     {
+      to: "/forecast",
+      icon: "chart",
+      title: "Review demand",
+      text: "Paste your monthly sales from Excel to see the trend for the next six months.",
+      action: "Open forecast",
+    },
+    {
       to: "/survey",
       icon: "survey",
-      title: "Customer survey",
-      text: `Ask customers which of your ${perKg.length || input.formats.length} pack sizes and prices they prefer, then use the answers in market research.`,
+      title: "Use customer feedback",
+      text: `Ask customers which of your ${perKg.length || input.formats.length} pack sizes and prices they prefer, then use the answers in research.`,
       action: "Create survey",
     },
   ];
   return (
-    <section className="feature-hub" aria-label="What you can do next">
-      <h2>What you can do next</h2>
+    <section className="feature-hub" aria-label="Next actions">
+      <h2>Next actions</h2>
       <div className="feature-grid">
-        {cards.map((card) => (
-          <Link key={card.to} to={card.to} className="feature-card">
-            <span className="feature-icon">
-              <Icon name={card.icon} />
-            </span>
-            <strong>{card.title}</strong>
-            <span className="feature-text">{card.text}</span>
-            <span className="feature-action">
-              {card.action} <Icon name="arrow" />
-            </span>
-          </Link>
-        ))}
+        {cards.map((card) => {
+          const body = (
+            <>
+              <span className="feature-icon">
+                <Icon name={card.icon} />
+              </span>
+              <strong>{card.title}</strong>
+              <span className="feature-text">{card.text}</span>
+              <span className="feature-action">
+                {card.action} <Icon name="arrow" />
+              </span>
+            </>
+          );
+          return card.to.startsWith("#") ? (
+            <a
+              key={card.to}
+              href={card.to}
+              className="feature-card"
+              onClick={(e) => {
+                e.preventDefault();
+                document.getElementById(card.to.slice(1))?.scrollIntoView?.();
+                document
+                  .querySelector<HTMLElement>(`${card.to} select`)
+                  ?.focus();
+              }}
+            >
+              {body}
+            </a>
+          ) : (
+            <Link key={card.to} to={card.to} className="feature-card">
+              {body}
+            </Link>
+          );
+        })}
       </div>
     </section>
   );
