@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Icon } from "./Icon";
 import { fieldLabel, friendlyNote } from "./guidance";
 import { lazy, Suspense } from "react";
@@ -77,9 +78,12 @@ export function Guidance({ items }: { items: string[] }) {
 export function ApiResults({
   result,
   input,
+  afterMetrics,
 }: {
   result: PackagingCostResult;
   input: ScenarioInput;
+  /** Optional content shown right under the headline figures. */
+  afterMetrics?: ReactNode;
 }) {
   return (
     <>
@@ -135,6 +139,7 @@ export function ApiResults({
           <small>Person-hours · estimated</small>
         </div>
       </div>
+      {afterMetrics}
       <div className="result-grid">
         <section className="panel cost-panel">
           <div className="panel-heading">

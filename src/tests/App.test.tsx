@@ -215,7 +215,7 @@ it("loads profiles and saves scenarios through company-scoped endpoints", async 
         String(init.body).includes("API company"),
     ),
   ).toBe(true);
-  fireEvent.click(screen.getByRole("link", { name: /Your costs/ }));
+  fireEvent.click(screen.getByRole("link", { name: /Your results/ }));
   await screen.findByLabelText("Monthly production (kg)");
   change("Monthly production (kg)", "2000");
   fireEvent.click(screen.getByRole("button", { name: "Save as new scenario" }));
@@ -466,7 +466,7 @@ it("does not let a save from an unmounted editor overwrite a newer draft", async
   );
   fireEvent.click(screen.getByRole("link", { name: /Company profile/ }));
   await screen.findByLabelText("Company name");
-  fireEvent.click(screen.getByRole("link", { name: /Your costs/ }));
+  fireEvent.click(screen.getByRole("link", { name: /Your results/ }));
   change("Monthly production (kg)", "3000");
   await act(async () => {
     release();
@@ -717,4 +717,24 @@ it("fills step 1 from a sales forecast pasted from Excel", async () => {
   expect(screen.getByRole("region", { name: "Your data" })).toHaveTextContent(
     "1,150 kg / month",
   );
+});
+it("shows the results with what-to-do-next feature cards after step 1", async () => {
+  await openDemo();
+  const hub = await screen.findByRole("region", {
+    name: "What you can do next",
+  });
+  for (const title of [
+    "Market research",
+    "Sales forecast",
+    "Stock & orders",
+    "Customer survey",
+  ])
+    expect(within(hub).getByText(title)).toBeInTheDocument();
+  expect(hub).toHaveTextContent("lower your €0.286 per kg");
+  expect(hub).toHaveTextContent("Your 250 g packs cost €0.88/kg to pack");
+  expect(hub).toHaveTextContent("about 1,300 bags and labels a month");
+  fireEvent.click(within(hub).getByRole("link", { name: /Customer survey/ }));
+  expect(
+    await screen.findByRole("heading", { name: "Customer survey" }),
+  ).toBeInTheDocument();
 });
