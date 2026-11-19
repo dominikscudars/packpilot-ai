@@ -1528,3 +1528,48 @@ fieldset:disabled {
   margin: 0;
   padding: 0;
 }
+
+.advisor-starters {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.advisor-starters button {
+  text-align: left;
+  white-space: normal;
+}
+.advisor-turn {
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  border-radius: 10px;
+  border: 1px solid #dfe5fa;
+}
+.advisor-user {
+  background: #eff2ff;
+}
+.advisor-text {
+  margin-top: 6px;
+  white-space: pre-wrap;
+  line-height: 1.55;
+  font-size: 13px;
+}
+.advisor-sources {
+  margin-top: 10px;
+  font-size: 12px;
+}
+.advisor-form {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+.advisor-form textarea {
+  width: 100%;
+  font: inherit;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #d6dcec;
+  resize: vertical;
+}
+.advisor-form button {
+  justify-self: start;
+}

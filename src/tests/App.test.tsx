@@ -591,3 +591,40 @@ it("lets a company enter its own data, add pack sizes and save it as the current
     "€60.00",
   );
 });
+it("asks the upgrade advisor with the current operation and shows its answer", async () => {
+  const fetchMock = vi.fn(
+    async () =>
+      new Response(
+        JSON.stringify({
+          reply: "Keep the current machine until about 6 t a month.",
+          sources: [
+            { url: "https://example.com/vac", title: "Vacuum machine" },
+          ],
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+  );
+  vi.stubGlobal("fetch", fetchMock);
+  try {
+    await openDemo("/advisor");
+    fireEvent.click(
+      await screen.findByRole("button", { name: /grow from 1 to 10 tonnes/ }),
+    );
+    expect(await screen.findByTestId("advisor-assistant")).toHaveTextContent(
+      "Keep the current machine until about 6 t a month.",
+    );
+    expect(
+      screen.getByRole("link", { name: "Vacuum machine" }),
+    ).toHaveAttribute("href", "https://example.com/vac");
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [
+      string,
+      RequestInit,
+    ];
+    expect(url).toBe("/api/advisor");
+    const sent = JSON.parse(String(init.body));
+    expect(sent.scenario.monthlyProductionKg.value).toBe("1000");
+    expect(sent.messages).toHaveLength(1);
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});
