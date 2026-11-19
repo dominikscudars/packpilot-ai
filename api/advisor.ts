@@ -1,4 +1,4 @@
-import { handleAdvisorRequest } from "../src/advisor/server";
+import { handleAdvisorRequest } from "../src/advisor/server.js";
 
 declare const process: { env: Record<string, string | undefined> };
 

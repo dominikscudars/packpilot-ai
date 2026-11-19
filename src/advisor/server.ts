@@ -1,13 +1,13 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { betaTool } from "@anthropic-ai/sdk/helpers/beta/json-schema";
 import { z } from "zod";
-import { calculatePackaging } from "../../backend/src/calculation-engine/packaging";
-import { compareScenarios } from "../../backend/src/calculation-engine/comparison";
+import { calculatePackaging } from "../../backend/src/calculation-engine/packaging.js";
+import { compareScenarios } from "../../backend/src/calculation-engine/comparison.js";
 import {
   scenarioInputSchema,
   type ScenarioInput,
-} from "../../backend/src/domain/scenario";
-import { assumed } from "../../backend/src/domain/inputs";
+} from "../../backend/src/domain/scenario.js";
+import { assumed } from "../../backend/src/domain/inputs.js";
 
 export const ADVISOR_MODEL = "claude-opus-5-5";
 const MAX_TURNS = 12;
