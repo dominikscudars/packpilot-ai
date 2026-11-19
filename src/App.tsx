@@ -9,6 +9,7 @@ import { Dashboard } from "./pages/Dashboard";
 import { CompanyProfile } from "./pages/CompanyProfile";
 import { Simulator } from "./pages/Simulator";
 import { Inventory } from "./pages/Inventory";
+import { DataEntry } from "./pages/DataEntry";
 function Shell() {
   const { company, mode } = useWorkspace();
   return (
@@ -39,6 +40,7 @@ function Shell() {
           {(
             [
               { path: "/", name: "Overview", icon: "overview" },
+              { path: "/data", name: "Enter your data", icon: "form" },
               { path: "/company", name: "Company profile", icon: "company" },
               {
                 path: "/simulator",
@@ -81,6 +83,7 @@ function Shell() {
         <main id="main" tabIndex={-1}>
           <Routes>
             <Route path="/" element={<Dashboard />} />
+            <Route path="/data" element={<DataEntry />} />
             <Route path="/company" element={<CompanyProfile />} />
             <Route path="/simulator" element={<Simulator />} />
             <Route path="/inventory" element={<Inventory />} />
