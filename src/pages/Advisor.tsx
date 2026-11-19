@@ -3,18 +3,23 @@ import { Link } from "react-router-dom";
 import { useWorkspace } from "../components/WorkspaceProvider";
 import type { AdvisorReply } from "../advisor/server";
 import { ReportText } from "../components/ReportText";
+import {
+  PREPARED_ANSWERS,
+  PREPARED_DATE,
+  type PreparedAnswer,
+} from "../advisor/preparedAnswers";
 
 interface Turn {
   role: "user" | "assistant";
   content: string;
   sources?: AdvisorReply["sources"];
+  /** A hand-researched answer shown without calling the AI service. */
+  prepared?: boolean;
 }
 
 const STARTERS = [
-  "Which EU packaging laws affect us, what changes by 2030, and what should we do now?",
-  "We want to grow from 1 to 10 tonnes a month. Which packing machines should we consider, and what do they cost?",
-  "Are there recyclable mono-material vacuum bags that keep fresh tofu for 10 days? Compare materials and suppliers.",
   "How can we make 250 g and 500 g packs cheaper per kilogram?",
+  "What happens to our costs if shops want 30% of our production in 250 g packs?",
 ];
 
 export const ADVISOR_URL = "/api/advisor";
@@ -41,7 +46,9 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           scenario: baseline.input,
+          // Prepared answers are reference material, not part of the chat.
           messages: next
+            .filter((t) => !t.prepared)
             .slice(-12)
             .map(({ role, content }) => ({ role, content })),
         }),
@@ -66,6 +73,20 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
     }
   }
 
+  function showPrepared(item: PreparedAnswer) {
+    setError("");
+    setTurns([
+      ...turns,
+      { role: "user", content: item.question, prepared: true },
+      {
+        role: "assistant",
+        content: item.answer,
+        sources: item.sources,
+        prepared: true,
+      },
+    ]);
+  }
+
   return (
     <>
       <header className="page-heading">
@@ -82,10 +103,37 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
         </div>
       </header>
 
+      <section className="panel prepared-panel">
+        <h2>Prepared research for OG TOFU</h2>
+        <p className="muted">
+          Answers to OG TOFU's own questions, researched on {PREPARED_DATE}.
+          Costs are PackPilot calculations on OG TOFU's data; prices and rules
+          come from the sources listed under each answer. These open instantly
+          and use no AI quota.
+        </p>
+        <div className="advisor-starters">
+          {PREPARED_ANSWERS.map((item) => (
+            <button
+              key={item.question}
+              type="button"
+              className="secondary"
+              disabled={busy}
+              onClick={() => showPrepared(item)}
+            >
+              {item.question}
+            </button>
+          ))}
+        </div>
+      </section>
+
       <section className="panel advisor-panel" aria-live="polite">
+        <h2>Ask your own question</h2>
         {turns.length === 0 && (
           <div className="advisor-starters">
-            <p className="muted">Try one of these questions:</p>
+            <p className="muted">
+              Live research uses the free AI quota (a few questions a day). Try
+              one of these:
+            </p>
             {STARTERS.map((s) => (
               <button
                 key={s}
@@ -105,7 +153,18 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
             className={`advisor-turn advisor-${turn.role}`}
             data-testid={`advisor-${turn.role}`}
           >
-            <strong>{turn.role === "user" ? "You" : "Advisor"}</strong>
+            <strong>
+              {turn.role === "user"
+                ? turn.prepared
+                  ? "OG TOFU asked"
+                  : "You"
+                : "Advisor"}
+            </strong>
+            {turn.prepared && turn.role === "assistant" && (
+              <span className="prepared-badge">
+                Prepared answer · researched {PREPARED_DATE}
+              </span>
+            )}
             {turn.role === "assistant" ? (
               <ReportText text={turn.content} />
             ) : (

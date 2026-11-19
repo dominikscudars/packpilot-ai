@@ -551,7 +551,9 @@ it("asks the upgrade advisor with the current operation and shows its answer", a
   try {
     await openDemo("/advisor");
     fireEvent.click(
-      await screen.findByRole("button", { name: /grow from 1 to 10 tonnes/ }),
+      await screen.findByRole("button", {
+        name: /cheaper per kilogram/,
+      }),
     );
     expect(await screen.findByTestId("advisor-assistant")).toHaveTextContent(
       "Keep the current machine until about 6 t a month.",
@@ -567,6 +569,41 @@ it("asks the upgrade advisor with the current operation and shows its answer", a
     const sent = JSON.parse(String(init.body));
     expect(sent.scenario.monthlyProductionKg.value).toBe("1000");
     expect(sent.messages).toHaveLength(1);
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});
+it("shows prepared OG TOFU research without calling the AI, and keeps it out of live questions", async () => {
+  const fetchMock = vi.fn(
+    async () =>
+      new Response(JSON.stringify({ reply: "Live answer.", sources: [] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+  );
+  vi.stubGlobal("fetch", fetchMock);
+  try {
+    await openDemo("/advisor");
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: /Which EU and Latvian packaging rules affect us/,
+      }),
+    );
+    const answer = await screen.findByTestId("advisor-assistant");
+    expect(answer).toHaveTextContent("Regulation (EU) 2025/40");
+    expect(answer).toHaveTextContent("Prepared answer · researched");
+    expect(fetchMock).not.toHaveBeenCalled();
+    change("Your question", "What about labels?");
+    fireEvent.click(screen.getByRole("button", { name: "Ask the advisor" }));
+    expect(await screen.findByText("Live answer.")).toBeInTheDocument();
+    const sent = JSON.parse(
+      String(
+        (fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body,
+      ),
+    );
+    expect(sent.messages).toEqual([
+      { role: "user", content: "What about labels?" },
+    ]);
   } finally {
     vi.unstubAllGlobals();
   }
