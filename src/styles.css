@@ -1573,3 +1573,31 @@ fieldset:disabled {
 .advisor-form button {
   justify-self: start;
 }
+
+.suggestion-chip {
+  align-self: flex-start;
+  width: auto;
+  margin-top: 6px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px dashed #9aa8e8;
+  background: #f3f5ff;
+  color: #3346d3;
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: none;
+}
+.suggestion-chip:hover {
+  background: #e6eaff;
+}
+.step-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+.next-step {
+  display: flex;
+  justify-content: flex-end;
+  margin: 8px 0 24px;
+}

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { NextStep } from "../components/NextStep";
 import type {
   InventoryPlanInput,
   Quantity,
@@ -265,7 +266,7 @@ export function Inventory() {
     <>
       <header className="page-heading">
         <div>
-          <span className="eyebrow">PLAN AHEAD</span>
+          <span className="eyebrow">STEP 4 OF 5</span>
           <h1>Inventory planning</h1>
           <p>Forecast packaging needs using the inventory calculator.</p>
         </div>
@@ -297,6 +298,7 @@ export function Inventory() {
         )}
       </section>
       <Planner key={selected} record={record} />
+      <NextStep to="/advisor" label="ask the upgrade advisor" />
     </>
   );
 }

@@ -40,16 +40,16 @@ function Shell() {
         <nav aria-label="Main navigation">
           {(
             [
-              { path: "/", name: "Overview", icon: "overview" },
-              { path: "/data", name: "Enter your data", icon: "form" },
-              { path: "/advisor", name: "Upgrade advisor", icon: "spark" },
-              { path: "/company", name: "Company profile", icon: "company" },
+              { path: "/data", name: "1. Enter your data", icon: "form" },
+              { path: "/", name: "2. Your costs", icon: "overview" },
               {
                 path: "/simulator",
-                name: "Scenario simulator",
+                name: "3. Compare scenarios",
                 icon: "simulator",
               },
-              { path: "/inventory", name: "Inventory planning", icon: "box" },
+              { path: "/inventory", name: "4. Plan inventory", icon: "box" },
+              { path: "/advisor", name: "5. Ask the advisor", icon: "spark" },
+              { path: "/company", name: "Company profile", icon: "company" },
             ] as const
           ).map((item) => (
             <NavLink key={item.path} to={item.path} end={item.path === "/"}>

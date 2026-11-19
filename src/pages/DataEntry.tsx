@@ -1,13 +1,58 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Decimal } from "decimal.js";
 import type { Quantity, ScenarioInput } from "../models/api";
 import { missing } from "../../backend/src/domain/inputs";
-import { createDemoScenario } from "../../backend/src/domain/demo";
 import { useWorkspace } from "../components/WorkspaceProvider";
 import { useRequest, RequestState, message } from "../components/AsyncState";
 import { QuantityField as Q } from "../components/QuantityField";
 import { ApiResults, money } from "../components/ApiResults";
+import { DEMO_REFERENCE_NAME } from "../demo/apiDemo";
+import { OG_TOFU, type Suggestion } from "../demo/ogTofuSuggestions";
+
+const og = (s: Suggestion) => ({
+  text: `${s.value} – OG TOFU${s.estimate ? " (estimate)" : ""}`,
+  apply: s.quantity,
+});
+
+const ogPack = (index: number, key: "grams" | "share") => {
+  const pack = OG_TOFU.packs.at(index);
+  return pack ? og(pack[key]) : undefined;
+};
+
+/** OG TOFU's reported values (and labelled estimates) for every field. */
+function ogTofuScenario(): ScenarioInput {
+  const machineId = "machine-1";
+  return {
+    monthlyProductionKg: OG_TOFU.monthlyProductionKg.quantity(),
+    formats: OG_TOFU.packs.map((pack, i) => ({
+      id: `format-${i + 1}`,
+      portionWeightGrams: pack.grams.quantity(),
+      allocationPercent: pack.share.quantity(),
+      materialCost: {
+        method: "combined",
+        combinedEuroPerPackage: OG_TOFU.materialEuroPerPack.quantity(),
+      },
+      machineId,
+    })),
+    machines: [
+      {
+        ...blankMachine(machineId),
+        throughput: {
+          method: "cycle",
+          packagesPerCycle: OG_TOFU.packsPerCycle.quantity(),
+          cycleSeconds: OG_TOFU.cycleSeconds.quantity(),
+        },
+        operators: OG_TOFU.operators.quantity(),
+      },
+    ],
+    labor: {
+      method: "perPackage",
+      euroPerPackage: OG_TOFU.laborEuroPerPack.quantity(),
+    },
+    additionalOperatingEuroPerMonth: missing(),
+  };
+}
 
 type Format = ScenarioInput["formats"][number];
 type Machine = ScenarioInput["machines"][number];
@@ -87,7 +132,15 @@ function shareTotal(formats: Format[]): Decimal | null {
 /** Plain-language form for a company's own packaging data, with live results. */
 export function DataEntry() {
   const { baseline, setBaseline, saveScenario, gateway, mode } = useWorkspace();
-  const [input, setInput] = useState(() => editable(baseline.input));
+  const navigate = useNavigate();
+  // The built-in demo example is not the visitor's data: start empty.
+  const hasOwnData = !(
+    mode === "demo" && baseline.name === DEMO_REFERENCE_NAME
+  );
+  const offerOg = mode === "demo";
+  const [input, setInput] = useState(() =>
+    hasOwnData ? editable(baseline.input) : blankScenario(),
+  );
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(
     null,
   );
@@ -129,12 +182,14 @@ export function DataEntry() {
     <>
       <header className="page-heading">
         <div>
-          <span className="eyebrow">YOUR NUMBERS</span>
+          <span className="eyebrow">STEP 1 OF 5</span>
           <h1>Enter your data</h1>
           <p>
             Fill in what you know about your packaging. Leave a field empty if
             you don't know it: results that need it show as unknown, never as
-            zero. Results update as you type.
+            zero.
+            {offerOg &&
+              " To try the demo, click a value marked “OG TOFU” or fill everything at once."}
           </p>
         </div>
       </header>
@@ -147,13 +202,15 @@ export function DataEntry() {
         >
           Clear all fields
         </button>
-        <button
-          type="button"
-          className="secondary"
-          onClick={() => change(editable(createDemoScenario()))}
-        >
-          Load OG TOFU example
-        </button>
+        {offerOg && (
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => change(ogTofuScenario())}
+          >
+            Fill everything with OG TOFU data
+          </button>
+        )}
       </div>
 
       <section className="panel">
@@ -164,6 +221,7 @@ export function DataEntry() {
           onChange={(monthlyProductionKg) =>
             change({ ...input, monthlyProductionKg })
           }
+          suggestion={offerOg ? og(OG_TOFU.monthlyProductionKg) : undefined}
         />
       </section>
 
@@ -183,6 +241,7 @@ export function DataEntry() {
                 onChange={(portionWeightGrams) =>
                   updateFormat(index, { portionWeightGrams })
                 }
+                suggestion={offerOg ? ogPack(index, "grams") : undefined}
               />
               <Q
                 label={`Share of production (%) · pack size ${index + 1}`}
@@ -190,6 +249,7 @@ export function DataEntry() {
                 onChange={(allocationPercent) =>
                   updateFormat(index, { allocationPercent })
                 }
+                suggestion={offerOg ? ogPack(index, "share") : undefined}
               />
               {format.materialCost.method === "combined" ? (
                 <Q
@@ -202,6 +262,9 @@ export function DataEntry() {
                         combinedEuroPerPackage,
                       },
                     })
+                  }
+                  suggestion={
+                    offerOg ? og(OG_TOFU.materialEuroPerPack) : undefined
                   }
                 />
               ) : (
@@ -326,6 +389,7 @@ export function DataEntry() {
                 labor: { method: "perPackage", euroPerPackage },
               })
             }
+            suggestion={offerOg ? og(OG_TOFU.laborEuroPerPack) : undefined}
           />
         ) : (
           <Q
@@ -354,6 +418,7 @@ export function DataEntry() {
             onChange={(cycleSeconds) =>
               updateMachine({ throughput: { ...cycle, cycleSeconds } })
             }
+            suggestion={offerOg ? og(OG_TOFU.cycleSeconds) : undefined}
           />
           <Q
             label="Packs sealed per cycle"
@@ -361,11 +426,13 @@ export function DataEntry() {
             onChange={(packagesPerCycle) =>
               updateMachine({ throughput: { ...cycle, packagesPerCycle } })
             }
+            suggestion={offerOg ? og(OG_TOFU.packsPerCycle) : undefined}
           />
           <Q
             label="People operating the machine"
             value={machine.operators}
             onChange={(operators: Quantity) => updateMachine({ operators })}
+            suggestion={offerOg ? og(OG_TOFU.operators) : undefined}
           />
           <Q
             label="Hours the machine is available per month"
@@ -394,13 +461,16 @@ export function DataEntry() {
               const saved = await saveScenario(
                 {
                   id: baseline.id,
-                  name: baseline.name || "My operation",
+                  name:
+                    hasOwnData && baseline.name
+                      ? baseline.name
+                      : "My operation",
                   input,
                 },
                 baseline.id === null,
               );
               setBaseline(saved);
-              setStatus({ ok: true, text: "Saved as your current operation." });
+              navigate("/");
             } catch (e) {
               setStatus({ ok: false, text: message(e) });
             } finally {
@@ -408,7 +478,7 @@ export function DataEntry() {
             }
           }}
         >
-          {saving ? "Saving…" : "Save as my current operation"}
+          {saving ? "Saving…" : "Save and see my costs →"}
         </button>
         {status && (
           <p role={status.ok ? "status" : "alert"}>

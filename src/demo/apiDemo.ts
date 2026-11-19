@@ -22,6 +22,8 @@ import type {
   Resources,
 } from "../models/api";
 export const DEMO_KEY = "packpilot.demo.v2";
+/** Name of the built-in example scenario a visitor has not replaced yet. */
+export const DEMO_REFERENCE_NAME = "Illustrative OG TOFU reference";
 const metadata = { id: z.string(), companyId: z.string() };
 const schemas = {
   products: productSchema,
@@ -114,7 +116,7 @@ function initial(): { company: CompanyRecord; catalog: Catalog } {
         {
           id: "og-demo-scenario",
           companyId,
-          name: "Illustrative OG TOFU reference",
+          name: DEMO_REFERENCE_NAME,
           kind: "modeled",
           input,
         },

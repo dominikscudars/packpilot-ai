@@ -4,10 +4,13 @@ export function QuantityField({
   label,
   value,
   onChange,
+  suggestion,
 }: {
   label: string;
   value: Quantity;
   onChange: (value: Quantity) => void;
+  /** Optional one-click value, shown as "[value] – [source]". */
+  suggestion?: { text: string; apply: () => Quantity };
 }) {
   const id = useId();
   return (
@@ -33,6 +36,16 @@ export function QuantityField({
         }
         aria-describedby={`${id}-source`}
       />
+      {suggestion && value.value === null && (
+        <button
+          type="button"
+          className="suggestion-chip"
+          aria-label={`Use ${suggestion.text} for ${label}`}
+          onClick={() => onChange(suggestion.apply())}
+        >
+          {suggestion.text}
+        </button>
+      )}
       <small id={`${id}-source`} className="field-source">
         {value.quality}
         {value.sourceNote ? ` · ${value.sourceNote}` : ""}

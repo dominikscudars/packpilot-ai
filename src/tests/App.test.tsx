@@ -34,10 +34,33 @@ function mount(path = "/", services: AppServices = demoConfig) {
     </StrictMode>,
   );
 }
+/** Step 1: fill every field with OG TOFU's data and save (lands on step 2). */
+async function enterOgData() {
+  if (!screen.queryByRole("heading", { name: "Enter your data" }))
+    fireEvent.click(
+      await screen.findByRole("link", { name: /Enter your data/ }),
+    );
+  fireEvent.click(
+    await screen.findByRole("button", {
+      name: "Fill everything with OG TOFU data",
+    }),
+  );
+  fireEvent.click(
+    screen.getByRole("button", { name: "Save and see my costs →" }),
+  );
+  await screen.findByRole("heading", { name: "Your costs" });
+}
 async function openDemo(path = "/") {
   const view = mount(path);
   fireEvent.click(screen.getByRole("button", { name: "Open local demo" }));
   await screen.findByLabelText("Active company");
+  if (path === "/") {
+    // A fresh demo starts at step 1; a saved one opens on step 2.
+    const heading = await screen.findByRole("heading", {
+      name: /Enter your data|Your costs/,
+    });
+    if (heading.textContent === "Enter your data") await enterOgData();
+  }
   return view;
 }
 const change = (label: string, value: string) =>
@@ -76,7 +99,8 @@ it("requires explicit demo entry, preserves exact reference results and persists
   await waitFor(() =>
     expect(screen.getByTestId("operating-cost")).toHaveTextContent("€572.00"),
   );
-  expect(localStorage.getItem(DEMO_KEY)).toBeNull();
+  // The 2000 kg edit is not stored until it is saved explicitly.
+  expect(localStorage.getItem(DEMO_KEY) ?? "").not.toContain('"2000"');
   fireEvent.click(screen.getByRole("button", { name: "Save scenario" }));
   await screen.findByText("Scenario saved in this browser.");
   view.unmount();
@@ -101,13 +125,15 @@ it("hides old results immediately when production becomes missing or invalid", a
 });
 it("keeps alternative inputs separate and requires an explicit hourly wage", async () => {
   await openDemo("/simulator");
+  await enterOgData();
+  fireEvent.click(screen.getByRole("link", { name: /Compare scenarios/ }));
   await screen.findByLabelText("Monthly production (kg)");
   change("Monthly production (kg)", "2000");
   await waitFor(() =>
     expect(screen.getByTestId("operating-cost")).toHaveTextContent("€572.00"),
   );
   expect(screen.getByText(/Production volumes differ/)).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("link", { name: /Overview/ }));
+  fireEvent.click(screen.getByRole("link", { name: /Your costs/ }));
   expect(await screen.findByTestId("operating-cost")).toHaveTextContent(
     "€286.00",
   );
@@ -239,7 +265,7 @@ it("loads profiles and saves scenarios through company-scoped endpoints", async 
         String(init.body).includes("API company"),
     ),
   ).toBe(true);
-  fireEvent.click(screen.getByRole("link", { name: /Overview/ }));
+  fireEvent.click(screen.getByRole("link", { name: /Your costs/ }));
   await screen.findByLabelText("Monthly production (kg)");
   change("Monthly production (kg)", "2000");
   fireEvent.click(screen.getByRole("button", { name: "Save as new scenario" }));
@@ -501,7 +527,7 @@ it("does not let a save from an unmounted editor overwrite a newer draft", async
   );
   fireEvent.click(screen.getByRole("link", { name: /Company profile/ }));
   await screen.findByLabelText("Company name");
-  fireEvent.click(screen.getByRole("link", { name: /Overview/ }));
+  fireEvent.click(screen.getByRole("link", { name: /Your costs/ }));
   change("Monthly production (kg)", "3000");
   await act(async () => {
     release();
@@ -554,9 +580,29 @@ it("keeps copied current inputs when an earlier alternative save completes", asy
   expect(screen.getByLabelText("Monthly production (kg)")).toHaveValue("1000");
   expect(screen.queryByText("Scenario saved to your company.")).toBeNull();
 });
-it("lets a company enter its own data, add pack sizes and save it as the current operation", async () => {
+it("starts step 1 empty, offers OG TOFU values and saves the company's own data", async () => {
   const view = await openDemo("/data");
+  const production = await screen.findByLabelText(
+    "How many kilograms do you produce per month?",
+  );
+  expect(production).toHaveValue("");
+  expect(localStorage.getItem(DEMO_KEY)).toBeNull();
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: "Use 1000 – OG TOFU for How many kilograms do you produce per month?",
+    }),
+  );
+  expect(production).toHaveValue("1000");
+  expect(screen.getByText(/reported · OG TOFU interview/)).toBeInTheDocument();
+  fireEvent.click(
+    screen.getByRole("button", { name: "Fill everything with OG TOFU data" }),
+  );
   expect(await screen.findByTestId("entry-total")).toHaveTextContent("€286.00");
+  // Labelled as estimates on the fields (and in the results' assumptions).
+  expect(
+    screen.getAllByText(/OG TOFU has not reported its 500 g \/ 250 g split/)
+      .length,
+  ).toBeGreaterThanOrEqual(2);
   fireEvent.click(screen.getByRole("button", { name: "Clear all fields" }));
   expect(await screen.findByRole("alert")).toHaveTextContent(/required/i);
   change("How many kilograms do you produce per month?", "100");
@@ -574,17 +620,16 @@ it("lets a company enter its own data, add pack sizes and save it as the current
   expect(screen.getByLabelText("Pack weight (g) · pack size 2")).toHaveValue(
     "",
   );
-  expect(screen.getByTestId("share-total")).toHaveTextContent(
-    "Shares entered so far are incomplete.",
-  );
   fireEvent.click(screen.getByRole("button", { name: "Remove pack size 2" }));
-  await waitFor(() =>
-    expect(screen.getByTestId("entry-total")).toHaveTextContent("€60.00"),
-  );
   fireEvent.click(
-    screen.getByRole("button", { name: "Save as my current operation" }),
+    screen.getByRole("button", { name: "Save and see my costs →" }),
   );
-  await screen.findByText("Saved as your current operation.");
+  expect(
+    await screen.findByRole("heading", { name: "Your costs" }),
+  ).toBeInTheDocument();
+  expect(await screen.findByTestId("operating-cost")).toHaveTextContent(
+    "€60.00",
+  );
   view.unmount();
   await openDemo();
   expect(await screen.findByTestId("operating-cost")).toHaveTextContent(
