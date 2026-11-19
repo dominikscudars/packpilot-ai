@@ -12,6 +12,12 @@ import { createApi } from "../api/client";
 import { createDemoGateway } from "../demo/apiDemo";
 import type { Gateway } from "../models/api";
 import { message } from "./AsyncState";
+import {
+  AccessTabs,
+  Plans,
+  SignUpForm,
+  type AccessView,
+} from "./AccountAccess";
 export interface AppServices {
   auth: AuthPort | null;
   apiUrl: string;
@@ -42,6 +48,12 @@ export function AuthGate({
   const [busy, setBusy] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [view, setView] = useState<AccessView>("login");
+  const [info, setInfo] = useState("");
+  const [plans, setPlans] = useState<null | {
+    greeting: string;
+    after: "demo" | "session" | "back";
+  }>(null);
   useEffect(() => {
     if (!config.auth) return;
     let active = true,
@@ -146,6 +158,22 @@ export function AuthGate({
         <p role="status">Restoring your session…</p>
       </main>
     );
+  if (plans)
+    return (
+      <Plans
+        greeting={plans.greeting}
+        continueLabel={
+          plans.after === "back" ? "Back to sign in" : "Continue to PackPilot"
+        }
+        onContinue={() => {
+          if (plans.after === "demo") {
+            setError("");
+            setDemo(true);
+          }
+          setPlans(null);
+        }}
+      />
+    );
   if (gateway)
     return (
       <div key={demo ? "demo" : userId}>
@@ -213,57 +241,93 @@ export function AuthGate({
             Retry sign out
           </button>
         )}
-        {config.auth ? (
-          <form
-            onSubmit={async (event) => {
-              event.preventDefault();
-              if (busy) return;
-              setBusy(true);
-              setError("");
-              try {
-                acceptSession.current = true;
-                await config.auth?.signIn(email, password);
-                setPassword("");
-              } catch (e) {
-                setError(message(e));
-              } finally {
-                setBusy(false);
-              }
-            }}
-          >
-            <label>
-              Email
-              <input
-                type="email"
-                autoComplete="username"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </label>
-            <label>
-              Password
-              <input
-                type="password"
-                autoComplete="current-password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </label>
-            <button disabled={busy} type="submit">
-              {busy ? "Signing in…" : "Sign in"}
-            </button>
-            <p className="footnote">
-              Use an account created in your organization’s Supabase project.
-              Ask your company owner for access.
-            </p>
-          </form>
-        ) : (
-          <p className="notice">
-            Company accounts are not enabled on this demo site yet. Use{" "}
-            <strong>Open local demo</strong> below to try PackPilot.
+        <AccessTabs
+          view={view}
+          onChange={(next) => {
+            setView(next);
+            setError("");
+            setInfo("");
+          }}
+        />
+        {info && (
+          <p className="notice" role="status">
+            {info}
           </p>
+        )}
+        {view === "login" ? (
+          <>
+            {config.auth ? (
+              <form
+                onSubmit={async (event) => {
+                  event.preventDefault();
+                  if (busy) return;
+                  setBusy(true);
+                  setError("");
+                  try {
+                    acceptSession.current = true;
+                    await config.auth?.signIn(email, password);
+                    setPassword("");
+                  } catch (e) {
+                    setError(message(e));
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                <label>
+                  Email
+                  <input
+                    type="email"
+                    autoComplete="username"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                </label>
+                <label>
+                  Password
+                  <input
+                    type="password"
+                    autoComplete="current-password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                </label>
+                <button disabled={busy} type="submit">
+                  {busy ? "Signing in…" : "Sign in"}
+                </button>
+                <p className="footnote">
+                  Use an account created in your organization’s Supabase
+                  project. Ask your company owner for access.
+                </p>
+              </form>
+            ) : (
+              <p className="notice">
+                Company accounts are not enabled on this demo site yet. Use{" "}
+                <strong>Open local demo</strong> below to try PackPilot.
+              </p>
+            )}
+          </>
+        ) : (
+          <SignUpForm
+            auth={config.auth}
+            onDone={(outcome, profile) => {
+              const greeting = `Welcome${profile.name ? `, ${profile.name}` : ""}`;
+              if (outcome.kind === "confirm-email") {
+                setView("login");
+                setInfo(
+                  `Check ${outcome.email} and confirm your address, then log in.`,
+                );
+                return;
+              }
+              if (outcome.kind === "session") acceptSession.current = true;
+              setPlans({
+                greeting,
+                after: outcome.kind === "session" ? "session" : "demo",
+              });
+            }}
+          />
         )}
         <hr />
         <h2>Explore the local demo</h2>
@@ -279,6 +343,14 @@ export function AuthGate({
           }}
         >
           Open local demo
+        </button>
+        <button
+          className="secondary"
+          onClick={() =>
+            setPlans({ greeting: "PackPilot plans", after: "back" })
+          }
+        >
+          See plans
         </button>
       </section>
     </main>
