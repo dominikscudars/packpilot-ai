@@ -17,6 +17,10 @@ import { assumed } from "../../backend/src/domain/inputs.js";
 
 /** Default Gemini model; override with the GEMINI_MODEL environment variable. */
 export const DEFAULT_GEMINI_MODEL = "gemini-3.8-flash";
+/** Tried when the main model is unavailable; override with GEMINI_FALLBACK_MODEL. */
+export const DEFAULT_FALLBACK_MODEL = "gemini-2.5-flash";
+/** Whole-answer budget, kept below the Vercel function limit (120 s). */
+const DEADLINE_MS = 90_000;
 const MAX_TURNS = 12;
 const MAX_CHARS = 2000;
 const MAX_STEPS = 8;
@@ -324,6 +328,7 @@ export async function advise(
   ai: GeminiModels,
   model: string,
   request: ParsedRequest,
+  deadline = Date.now() + DEADLINE_MS,
 ): Promise<AdvisorReply> {
   const current = request.scenario;
   const contents: Content[] = request.messages.map((m, i) => ({
@@ -338,6 +343,12 @@ export async function advise(
     ],
   }));
   for (let step = 0; step < MAX_STEPS; step++) {
+    if (Date.now() > deadline)
+      return {
+        reply:
+          "The advisor needed too long for this question. Try a narrower question.",
+        sources: [],
+      };
     const response = await ai.models.generateContent({
       model,
       contents,
@@ -385,6 +396,7 @@ export async function handleAdvisorRequest(
   options: {
     apiKey: string | undefined;
     model?: string;
+    fallbackModel?: string;
     client?: GeminiModels;
   },
 ): Promise<Response> {
@@ -405,33 +417,50 @@ export async function handleAdvisorRequest(
     return json(400, {
       error: `Invalid request: ${parsed.error.issues[0]?.message ?? "unknown"}`,
     });
-  const client = options.client ?? new GoogleGenAI({ apiKey: options.apiKey });
-  try {
-    return json(
-      200,
-      await advise(client, options.model || DEFAULT_GEMINI_MODEL, parsed.data),
-    );
-  } catch (e) {
-    if (e instanceof ApiError) {
-      if (e.status === 400 && /api key/i.test(e.message))
-        return json(502, {
-          error: "The server's Gemini API key was rejected.",
-        });
-      if (e.status === 401 || e.status === 403)
-        return json(502, {
-          error: "The server's Gemini API key was rejected.",
-        });
-      if (e.status === 404)
-        return json(502, {
-          error:
-            "The configured Gemini model was not found. Check GEMINI_MODEL.",
-        });
-      if (e.status === 429)
-        return json(429, {
-          error: "The advisor is busy or out of quota. Try again later.",
-        });
-      return json(502, { error: `The AI service failed (${e.status}).` });
+  const client =
+    options.client ??
+    new GoogleGenAI({
+      apiKey: options.apiKey,
+      httpOptions: {
+        timeout: 45_000,
+        retryOptions: { attempts: 3, initialDelay: 1, maxDelay: 4 },
+      },
+    });
+  const models = [
+    options.model || DEFAULT_GEMINI_MODEL,
+    options.fallbackModel || DEFAULT_FALLBACK_MODEL,
+  ].filter((m, i, all) => all.indexOf(m) === i);
+  const deadline = Date.now() + DEADLINE_MS;
+  let lastError: unknown;
+  for (const model of models) {
+    try {
+      return json(200, await advise(client, model, parsed.data, deadline));
+    } catch (e) {
+      lastError = e;
+      // Try the backup model only when the main one is missing or overloaded.
+      if (!(e instanceof ApiError) || ![404, 429, 500, 503].includes(e.status))
+        break;
     }
-    return json(500, { error: "The advisor failed unexpectedly." });
   }
+  return errorResponse(lastError);
+}
+
+/** Maps Gemini failures to a clear message; never includes the API key. */
+function errorResponse(e: unknown): Response {
+  if (!(e instanceof ApiError))
+    return json(500, { error: "The advisor failed unexpectedly." });
+  const detail = e.message.replace(/\s+/g, " ").slice(0, 300);
+  if (e.status === 401 || e.status === 403 || /api key/i.test(e.message))
+    return json(502, { error: "The server's Gemini API key was rejected." });
+  if (e.status === 404)
+    return json(502, {
+      error: `The Gemini model was not found; check GEMINI_MODEL. (${detail})`,
+    });
+  if (e.status === 429)
+    return json(429, {
+      error: `Gemini quota or rate limit reached. Try again later. (${detail})`,
+    });
+  return json(502, {
+    error: `Gemini is unavailable right now (${e.status}). Try again in a minute. (${detail})`,
+  });
 }
