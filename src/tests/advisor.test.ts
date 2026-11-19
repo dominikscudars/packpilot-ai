@@ -256,6 +256,6 @@ describe("advisor HTTP handler", () => {
     const grounded = generateContent.mock.calls.filter((c) =>
       JSON.stringify(c[0].config?.tools).includes("googleSearch"),
     );
-    expect(grounded).toHaveLength(5);
+    expect(grounded).toHaveLength(3);
   });
 });

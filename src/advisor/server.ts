@@ -23,7 +23,7 @@ const MAX_TURNS = 12;
 const MAX_CHARS = 2000;
 const MAX_STEPS = 12;
 /** Web research calls allowed per question (each runs one Google-grounded request). */
-const MAX_RESEARCH = 5;
+const MAX_RESEARCH = 3;
 
 const SYSTEM_PROMPT = `You are PackPilot AI's packaging research analyst for small and medium food manufacturers, mainly in Latvia and the EU.
 You do practical market research and recommend how a manufacturer should upgrade its packaging: machinery, materials, pack formats, processes, suppliers and regulatory readiness.
@@ -520,7 +520,14 @@ export async function handleAdvisorRequest(
       apiKey: options.apiKey,
       httpOptions: {
         timeout: 60_000,
-        retryOptions: { attempts: 3, initialDelay: 1, maxDelay: 4 },
+        // Retry brief outages only: a 429 means the (free-tier) quota is
+        // used up, and retrying would just spend more of it.
+        retryOptions: {
+          attempts: 3,
+          initialDelay: 1,
+          maxDelay: 4,
+          httpStatusCodes: [500, 502, 503, 504],
+        },
       },
     });
   // A backup model is tried only when GEMINI_FALLBACK_MODEL is set.
@@ -547,7 +554,7 @@ export async function handleAdvisorRequest(
 function errorResponse(e: unknown): Response {
   if (!(e instanceof ApiError))
     return json(500, { error: "The advisor failed unexpectedly." });
-  const detail = e.message.replace(/\s+/g, " ").slice(0, 300);
+  const detail = e.message.replace(/\s+/g, " ").slice(0, 600);
   if (e.status === 401 || e.status === 403 || /api key/i.test(e.message))
     return json(502, { error: "The server's Gemini API key was rejected." });
   if (e.status === 404)
@@ -556,7 +563,7 @@ function errorResponse(e: unknown): Response {
     });
   if (e.status === 429)
     return json(429, {
-      error: `Gemini quota or rate limit reached. Try again later. (${detail})`,
+      error: `Gemini's free-tier limit was reached. Wait a minute and try again; if it persists, the daily limit is used up. (${detail})`,
     });
   return json(502, {
     error: `Gemini is unavailable right now (${e.status}). Try again in a minute. (${detail})`,
