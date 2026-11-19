@@ -177,12 +177,7 @@ const PLANS: Plan[] = [
     name: "Pilot",
     price: "Free during the pilot",
     summary: "Everything in today's PackPilot, for pilot manufacturers.",
-    features: [
-      "Packaging cost calculator",
-      "Scenario simulator",
-      "Inventory planning",
-      "AI upgrade advisor",
-    ],
+    features: ["Packaging cost calculator", "AI research and upgrade advice"],
     free: true,
   },
   {

@@ -192,4 +192,70 @@ describe("advisor HTTP handler", () => {
     expect((await r.json()).error).toMatch(/key was rejected/);
     expect(generateContent).toHaveBeenCalledTimes(1);
   });
+  it("runs Google-grounded research and returns its sources with the answer", async () => {
+    const generateContent = vi
+      .fn()
+      .mockResolvedValueOnce({
+        functionCalls: [
+          { id: "r1", name: "research_web", args: { query: "EU PPWR 2030" } },
+        ],
+      })
+      .mockResolvedValueOnce({
+        text: "PPWR applies from 12 August 2026.",
+        candidates: [
+          {
+            groundingMetadata: {
+              groundingChunks: [
+                {
+                  web: { uri: "https://eur-lex.europa.eu/x", title: "EUR-Lex" },
+                },
+              ],
+            },
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ text: "## Recommendation\nPrepare now." });
+    const r = await handleAdvisorRequest(post(ask("Which EU laws apply?")), {
+      apiKey: undefined,
+      client: { models: { generateContent } },
+    });
+    expect(await r.json()).toEqual({
+      reply: "## Recommendation\nPrepare now.",
+      sources: [{ url: "https://eur-lex.europa.eu/x", title: "EUR-Lex" }],
+    });
+    const researchCall = generateContent.mock.calls[1][0];
+    expect(researchCall.config.tools).toEqual([{ googleSearch: {} }]);
+    expect(JSON.stringify(researchCall.contents)).toContain("EU PPWR 2030");
+    const back =
+      generateContent.mock.calls[2][0].contents[2].parts[0].functionResponse
+        .response;
+    expect(back.output.findings).toBe("PPWR applies from 12 August 2026.");
+  });
+  it("caps web research per question", async () => {
+    const call = (n: number) => ({
+      id: `r${n}`,
+      name: "research_web",
+      args: { query: `q${n}` },
+    });
+    const generateContent = vi.fn(
+      async (params: { config?: { tools?: unknown[] } }) => {
+        const grounded = JSON.stringify(params.config?.tools).includes(
+          "googleSearch",
+        );
+        if (grounded) return { text: "finding" };
+        return generateContent.mock.calls.length < 3
+          ? { functionCalls: [1, 2, 3, 4, 5, 6].map(call) }
+          : { text: "done" };
+      },
+    );
+    const r = await handleAdvisorRequest(post(ask()), {
+      apiKey: undefined,
+      client: { models: { generateContent } } as unknown as GeminiModels,
+    });
+    expect((await r.json()).reply).toBe("done");
+    const grounded = generateContent.mock.calls.filter((c) =>
+      JSON.stringify(c[0].config?.tools).includes("googleSearch"),
+    );
+    expect(grounded).toHaveLength(5);
+  });
 });

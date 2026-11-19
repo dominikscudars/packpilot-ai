@@ -1,5 +1,5 @@
 import { Icon } from "./components/Icon";
-import { NavLink, Route, Routes, Link } from "react-router-dom";
+import { NavLink, Navigate, Route, Routes, Link } from "react-router-dom";
 import {
   WorkspaceProvider,
   useWorkspace,
@@ -7,8 +7,6 @@ import {
 import { AuthGate, type AppServices } from "./components/AuthGate";
 import { Dashboard } from "./pages/Dashboard";
 import { CompanyProfile } from "./pages/CompanyProfile";
-import { Simulator } from "./pages/Simulator";
-import { Inventory } from "./pages/Inventory";
 import { DataEntry } from "./pages/DataEntry";
 import { Advisor } from "./pages/Advisor";
 function Shell() {
@@ -43,12 +41,10 @@ function Shell() {
               { path: "/data", name: "1. Enter your data", icon: "form" },
               { path: "/", name: "2. Your costs", icon: "overview" },
               {
-                path: "/simulator",
-                name: "3. Compare scenarios",
-                icon: "simulator",
+                path: "/advisor",
+                name: "3. Research & advice",
+                icon: "spark",
               },
-              { path: "/inventory", name: "4. Plan inventory", icon: "box" },
-              { path: "/advisor", name: "5. Ask the advisor", icon: "spark" },
               { path: "/company", name: "Company profile", icon: "company" },
             ] as const
           ).map((item) => (
@@ -88,8 +84,8 @@ function Shell() {
             <Route path="/data" element={<DataEntry />} />
             <Route path="/advisor" element={<Advisor />} />
             <Route path="/company" element={<CompanyProfile />} />
-            <Route path="/simulator" element={<Simulator />} />
-            <Route path="/inventory" element={<Inventory />} />
+            <Route path="/simulator" element={<Navigate to="/" replace />} />
+            <Route path="/inventory" element={<Navigate to="/" replace />} />
             <Route
               path="*"
               element={

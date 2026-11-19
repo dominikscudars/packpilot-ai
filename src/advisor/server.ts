@@ -17,22 +17,42 @@ import { assumed } from "../../backend/src/domain/inputs.js";
 
 /** Default Gemini model; override with the GEMINI_MODEL environment variable. */
 export const DEFAULT_GEMINI_MODEL = "gemini-3.8-flash";
-/** Whole-answer budget, kept below the Vercel function limit (120 s). */
-const DEADLINE_MS = 90_000;
+/** Whole-answer budget, kept below the Vercel function limit (300 s). */
+const DEADLINE_MS = 240_000;
 const MAX_TURNS = 12;
 const MAX_CHARS = 2000;
-const MAX_STEPS = 8;
+const MAX_STEPS = 12;
+/** Web research calls allowed per question (each runs one Google-grounded request). */
+const MAX_RESEARCH = 5;
 
-const SYSTEM_PROMPT = `You are PackPilot AI's packaging advisor for small food manufacturers.
-You help a manufacturer decide how to upgrade their packaging operation: pack sizes, materials, labour and machinery, especially as production grows.
+const SYSTEM_PROMPT = `You are PackPilot AI's packaging research analyst for small and medium food manufacturers, mainly in Latvia and the EU.
+You do practical market research and recommend how a manufacturer should upgrade its packaging: machinery, materials, pack formats, processes, suppliers and regulatory readiness.
+
+How to work:
+1. Read the company's current operation (given as PackPilot JSON).
+2. Research before you answer. Call research_web for anything about laws and deadlines, machine models and prices, packaging materials, suppliers, recycling and market trends. Run several focused searches (one topic each), for example "EU PPWR recyclability requirements for food packaging 2030", "double chamber vacuum packaging machine price Europe", "mono-material PE vacuum pouch shelf life fresh tofu".
+3. Test options with evaluate_scenario: every cost, time, capacity or saving figure about this company must come from it. When research gives a machine's speed or price, feed it in as an assumption and say so.
+4. Recommend. Compare at least two or three concrete options where the question allows, and say which you recommend now and which later as production grows.
 
 Rules:
-- Every cost, time or saving figure you state must come from the evaluate_scenario tool or from the current operation given to you. Never estimate PackPilot figures yourself.
-- To test an idea, call evaluate_scenario with the change. Compare several options when the question allows, then recommend one.
-- You have no internet access. For a machine or material price you don't have, test a clearly stated example value with evaluate_scenario, say it is an example, and tell the company to get a supplier quote.
-- Inputs marked "assumption" or "missing" are uncertain; say when a recommendation depends on them and what the company should measure.
-- Do not certify food-contact compliance, shelf life, recyclability or machine compatibility. Say these need supplier or lab confirmation.
-- Write for a non-specialist owner. Lead with the recommendation, then the numbers behind it, then what to check next. Keep it under about 300 words. Use short paragraphs and simple "- " bullets; no tables, headings or bold markers.`;
+- Facts from research must be cited; never invent prices, model names, laws or dates. If research finds nothing reliable, say so.
+- Prices found online are indicative: give currency, source and that a supplier quote is needed.
+- Do not certify food-contact compliance, shelf life, recyclability or machine compatibility; say what test, declaration or supplier confirmation is needed.
+- Inputs marked "assumption" or "missing" are uncertain; say when a recommendation depends on them.
+
+Background you can build on (verify details with research_web before relying on them):
+- EU Packaging and Packaging Waste Regulation (EU) 2025/40 (PPWR) applies in general from 12 August 2026. It phases in requirements such as recyclable-by-design packaging from 2030, restrictions on PFAS in food-contact packaging, packaging minimisation and harmonised labelling.
+- Food-contact materials: Regulation (EC) No 1935/2004 (framework), Regulation (EU) No 10/2011 (plastics, with a supplier declaration of compliance) and Regulation (EC) No 2023/2006 (good manufacturing practice).
+- Food information to consumers: Regulation (EU) No 1169/2011 (labelling, allergens, nutrition). In Latvia, labels must be in Latvian; food businesses are registered with and supervised by PVD (Pārtikas un veterinārais dienests).
+- Latvia also has a natural resources tax on packaging and producer-responsibility schemes for packaging waste.
+- Typical options for vacuum-packed fresh foods: single- and double-chamber vacuum machines, belt chamber machines, thermoforming lines and tray sealers (vacuum skin or modified atmosphere). Materials range from PA/PE multilayer pouches to mono-material PE or PP barrier films marketed as recyclable.
+
+Write for a non-specialist owner, in English, as a short research report:
+## Recommendation (two or three sentences)
+## Options compared (each option: what it is, indicative price with source, effect on cost and capacity from evaluate_scenario)
+## Regulations to prepare for (only those relevant to the question)
+## Next steps (concrete actions, such as which quotes or tests to request)
+Use "- " bullets and **bold** sparingly. No tables. Keep it under about 700 words.`;
 
 const evaluationSchema = z
   .object({
@@ -290,6 +310,23 @@ const evaluateDeclaration: FunctionDeclaration = {
   },
 };
 
+const researchDeclaration: FunctionDeclaration = {
+  name: "research_web",
+  description:
+    "Search the web with Google for current facts: EU and Latvian packaging and food laws, packaging machines (models, speeds, prices), packaging materials and their shelf-life and recyclability, suppliers, and market trends. Ask one focused question per call. Returns findings with source links.",
+  parametersJsonSchema: {
+    type: "object",
+    properties: {
+      query: {
+        type: "string",
+        description:
+          "One focused research question, e.g. 'double chamber vacuum packaging machine price Europe 2026'.",
+      },
+    },
+    required: ["query"],
+  },
+};
+
 /** The part of the Gemini client the advisor uses (injectable for tests). */
 export interface GeminiModels {
   models: {
@@ -301,12 +338,44 @@ export interface GeminiModels {
   };
 }
 
-function runTool(
+type Source = AdvisorReply["sources"][number];
+
+/** One Google-grounded research request; returns findings and their sources. */
+async function research(
+  ai: GeminiModels,
+  model: string,
+  query: string,
+): Promise<{ findings: string; sources: Source[] }> {
+  const response = await ai.models.generateContent({
+    model,
+    contents: [
+      {
+        role: "user",
+        parts: [
+          {
+            text: `Research this for a small food manufacturer in Latvia (EU): ${query}\n\nReport concrete, current facts: names, models, regulation numbers and dates, and prices with currency and date. Say clearly when something could not be confirmed. Under 250 words.`,
+          },
+        ],
+      },
+    ],
+    config: { tools: [{ googleSearch: {} }], maxOutputTokens: 2048 },
+  });
+  const chunks =
+    response.candidates?.[0]?.groundingMetadata?.groundingChunks ?? [];
+  const sources: Source[] = [];
+  for (const chunk of chunks) {
+    const uri = chunk.web?.uri;
+    if (uri) sources.push({ url: uri, title: chunk.web?.title || uri });
+  }
+  return { findings: (response.text ?? "").trim(), sources };
+}
+
+const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e));
+
+function runEvaluation(
   current: ScenarioInput,
-  name: string | undefined,
   args: unknown,
 ): Record<string, unknown> {
-  if (name !== "evaluate_scenario") return { error: `Unknown tool ${name}.` };
   const parsed = evaluationSchema.safeParse(args);
   if (!parsed.success)
     return {
@@ -317,11 +386,11 @@ function runTool(
   try {
     return { output: evaluate(current, parsed.data) };
   } catch (e) {
-    return { error: e instanceof Error ? e.message : String(e) };
+    return { error: errorText(e) };
   }
 }
 
-/** Builds the answer: Gemini plus the deterministic engine as a tool. */
+/** Builds the answer: Gemini with web research and the deterministic engine. */
 export async function advise(
   ai: GeminiModels,
   model: string,
@@ -329,6 +398,8 @@ export async function advise(
   deadline = Date.now() + DEADLINE_MS,
 ): Promise<AdvisorReply> {
   const current = request.scenario;
+  const sources = new Map<string, Source>();
+  let researchCalls = 0;
   const contents: Content[] = request.messages.map((m, i) => ({
     role: m.role === "assistant" ? "model" : "user",
     parts: [
@@ -340,52 +411,80 @@ export async function advise(
       },
     ],
   }));
+  const reply = (text: string): AdvisorReply => ({
+    reply: text,
+    sources: [...sources.values()].slice(0, 12),
+  });
   for (let step = 0; step < MAX_STEPS; step++) {
     if (Date.now() > deadline)
-      return {
-        reply:
-          "The advisor needed too long for this question. Try a narrower question.",
-        sources: [],
-      };
+      return reply(
+        "The research took too long for this question. Try a narrower question.",
+      );
     const response = await ai.models.generateContent({
       model,
       contents,
       config: {
         systemInstruction: SYSTEM_PROMPT,
-        tools: [{ functionDeclarations: [evaluateDeclaration] }],
+        tools: [
+          { functionDeclarations: [evaluateDeclaration, researchDeclaration] },
+        ],
         maxOutputTokens: 8192,
       },
     });
     const calls = response.functionCalls ?? [];
     if (calls.length === 0) {
-      const reply = (response.text ?? "").trim();
-      return {
-        reply: reply || "The advisor returned no answer. Please try again.",
-        sources: [],
-      };
+      const text = (response.text ?? "").trim();
+      return reply(text || "The advisor returned no answer. Please try again.");
     }
     // Send the model's turn back unchanged (it may carry thought signatures).
-    const modelTurn = response.candidates?.[0]?.content ?? {
-      role: "model",
-      parts: calls.map((functionCall) => ({ functionCall })),
-    };
-    contents.push(modelTurn);
+    contents.push(
+      response.candidates?.[0]?.content ?? {
+        role: "model",
+        parts: calls.map((functionCall) => ({ functionCall })),
+      },
+    );
+    const results = await Promise.all(
+      calls.map(async (call): Promise<Record<string, unknown>> => {
+        if (call.name === "evaluate_scenario")
+          return runEvaluation(current, call.args);
+        if (call.name !== "research_web")
+          return { error: `Unknown tool ${call.name}.` };
+        const query = call.args?.query;
+        if (typeof query !== "string" || !query.trim())
+          return { error: "Give a research question in 'query'." };
+        if (++researchCalls > MAX_RESEARCH)
+          return {
+            error:
+              "Research limit reached for this question. Answer with what you have.",
+          };
+        try {
+          const found = await research(ai, model, query.slice(0, 300));
+          for (const s of found.sources) sources.set(s.url, s);
+          return {
+            output: {
+              findings: found.findings || "No findings.",
+              sources: found.sources,
+            },
+          };
+        } catch (e) {
+          return { error: `Research failed: ${errorText(e)}` };
+        }
+      }),
+    );
     contents.push({
       role: "user",
-      parts: calls.map((call) => ({
+      parts: calls.map((call, i) => ({
         functionResponse: {
           id: call.id,
           name: call.name,
-          response: runTool(current, call.name, call.args),
+          response: results[i],
         },
       })),
     });
   }
-  return {
-    reply:
-      "The advisor ran out of steps before finishing. Try a narrower question.",
-    sources: [],
-  };
+  return reply(
+    "The advisor ran out of steps before finishing. Try a narrower question.",
+  );
 }
 
 /** HTTP entry point shared by the Vercel function and tests. */
@@ -420,7 +519,7 @@ export async function handleAdvisorRequest(
     new GoogleGenAI({
       apiKey: options.apiKey,
       httpOptions: {
-        timeout: 45_000,
+        timeout: 60_000,
         retryOptions: { attempts: 3, initialDelay: 1, maxDelay: 4 },
       },
     });
