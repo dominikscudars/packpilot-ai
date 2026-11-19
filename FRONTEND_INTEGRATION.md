@@ -89,3 +89,9 @@ Live Supabase login/refresh, deployed CORS/HTTPS and hosting behavior remain to 
 ## Phase 4 integration fixes
 
 Demand confirmation is bound to the exact compared input snapshots. A completed scenario save updates the editor only if that editor and draft are still current, so navigation or copying current inputs cannot be undone by a late response. The requested snapshot still saves on the server. See [RELEASE_REVIEW.md](RELEASE_REVIEW.md) for regressions and [STAGING_PLAN.md](STAGING_PLAN.md) for frontend environment variables and live acceptance checks.
+
+## Interface refresh
+
+The workspace now uses a navy sidebar, blue/mint chart palette, consistent SVG icons, larger metric values and responsive cards/forms. The cost chart includes the existing operating total; the production-mix bar displays the scenario's requested weight shares, not measured output or historical trends. Unknown/zero costs have explicit chart states. Table mass values keep up to six decimals with insignificant trailing zeros removed; aggregate packed/unpackaged mass retains six decimals. Calculation inputs, engines, authentication and persistence behavior are unchanged.
+
+Visual verification covered 320, 390, 760, 768, 1024, 1197 and 1440 px widths without page overflow, plus demo navigation, the simulator link/edit/save, profile and inventory forms, fractional mass and exit. The existing authenticated browser flow also passed with mocked Supabase transport and the real signed-token API/database. Frontend TypeScript, all 90 tests, formatting and production build passed. Preview is local only; no merge or deployment was performed.

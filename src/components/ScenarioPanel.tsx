@@ -1,3 +1,4 @@
+import { Icon } from "./Icon";
 import { useEffect, useRef, useState } from "react";
 import { useWorkspace, type Draft } from "./WorkspaceProvider";
 import { ScenarioEditor } from "./ScenarioEditor";
@@ -46,8 +47,16 @@ export function ScenarioPanel({
     }
   }
   return (
-    <section className="panel">
-      <h2>{title}</h2>
+    <section className="panel scenario-panel">
+      <div className="panel-heading">
+        <div>
+          <span className="eyebrow">SCENARIO WORKSPACE</span>
+          <h2>{title}</h2>
+        </div>
+        <span className="section-icon">
+          <Icon name="simulator" />
+        </span>
+      </div>
       <fieldset disabled={busy} className="plain-fieldset">
         <div className="form-grid">
           <label>

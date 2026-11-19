@@ -1,3 +1,4 @@
+import { Icon } from "./Icon";
 import {
   useEffect,
   useLayoutEffect,
@@ -160,6 +161,36 @@ export function AuthGate({
     );
   return (
     <main className="auth-screen">
+      <aside className="auth-story">
+        <div className="brand">
+          <span className="brand-mark">
+            <Icon name="box" />
+          </span>
+          <span>
+            PackPilot<span className="brand-ai"> AI</span>
+          </span>
+        </div>
+        <h2>
+          Less guesswork.
+          <br />
+          <span>More clarity.</span>
+        </h2>
+        <p>
+          Your packaging costs, production scenarios and inventory plans. One
+          connected workspace.
+        </p>
+        <div className="auth-features">
+          <span>
+            <Icon name="wallet" /> Understand costs
+          </span>
+          <span>
+            <Icon name="simulator" /> Explore scenarios
+          </span>
+          <span>
+            <Icon name="box" /> Plan inventory
+          </span>
+        </div>
+      </aside>
       <section className="panel auth-panel">
         <span className="eyebrow">PACKPILOT AI</span>
         <h1>Your packaging workspace</h1>

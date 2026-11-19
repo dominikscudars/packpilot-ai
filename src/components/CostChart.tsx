@@ -6,19 +6,20 @@ export default function CostChart({
   data: { name: string; value: number }[];
 }) {
   return (
-    <ResponsiveContainer width="100%" height={210}>
+    <ResponsiveContainer width="100%" height={228}>
       <PieChart>
         <Pie
           data={data}
           dataKey="value"
           isAnimationActive={false}
-          innerRadius="60%"
-          outerRadius="85%"
-          paddingAngle={3}
+          innerRadius="77%"
+          outerRadius="95%"
+          paddingAngle={4}
+          cornerRadius={5}
           stroke="none"
         >
           {data.map((item, index) => (
-            <Cell key={item.name} fill={index ? "#b7d9c8" : "#1a6552"} />
+            <Cell key={item.name} fill={index ? "#6ed7b2" : "#4f61f6"} />
           ))}
         </Pie>
         <Tooltip formatter={(value) => euro(Number(value))} />

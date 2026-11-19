@@ -1,3 +1,4 @@
+import { Icon } from "./Icon";
 import { lazy, Suspense } from "react";
 import { Decimal } from "decimal.js";
 import type { PackagingCostResult, ScenarioInput } from "../models/api";
@@ -55,14 +56,24 @@ export function ApiResults({
     <>
       <div className="metrics">
         <div className="metric primary">
-          <span>Monthly operating cost</span>
+          <div className="metric-heading">
+            <span>Monthly operating cost</span>
+            <span className="metric-icon">
+              <Icon name="wallet" />
+            </span>
+          </div>
           <strong data-testid="operating-cost">
             {money(result.totalPackagingOperatingEuro)}
           </strong>
           <small>Materials + packaging labor</small>
         </div>
         <div className="metric">
-          <span>Packaging cost per kg</span>
+          <div className="metric-heading">
+            <span>Packaging cost per kg</span>
+            <span className="metric-icon">
+              <Icon name="scale" />
+            </span>
+          </div>
           <strong data-testid="cost-per-kg">
             {result.monthlyProductionKg === "0"
               ? "Not applicable"
@@ -71,14 +82,24 @@ export function ApiResults({
           <small>Per kg of planned production</small>
         </div>
         <div className="metric">
-          <span>Whole packages</span>
+          <div className="metric-heading">
+            <span>Whole packages</span>
+            <span className="metric-icon">
+              <Icon name="box" />
+            </span>
+          </div>
           <strong data-testid="total-packages">
             {decimalText(result.totalPackages, 0)}
           </strong>
           <small>Mass-preserving allocation</small>
         </div>
         <div className="metric">
-          <span>Packaging labor</span>
+          <div className="metric-heading">
+            <span>Packaging labor</span>
+            <span className="metric-icon">
+              <Icon name="clock" />
+            </span>
+          </div>
           <strong>
             {decimalText(result.personHours)} <em>hrs</em>
           </strong>
@@ -86,20 +107,25 @@ export function ApiResults({
         </div>
       </div>
       <div className="result-grid">
-        <section className="panel">
-          <span className="eyebrow">COST STRUCTURE</span>
-          <h2>Where packaging spend goes</h2>
-          <p>
-            Materials and labels:{" "}
-            <strong>{money(result.totalMaterialEuro)}</strong>
-          </p>
-          <p>
-            Packaging labor: <strong>{money(result.totalLaborEuro)}</strong>
-          </p>
-          {result.totalMaterialEuro !== null &&
+        <section className="panel cost-panel">
+          <div className="panel-heading">
+            <div>
+              <span className="eyebrow">COST STRUCTURE</span>
+              <h2>Where packaging spend goes</h2>
+            </div>
+            <span className="section-icon">
+              <Icon name="wallet" />
+            </span>
+          </div>
+          <div className="cost-visual">
+            {result.totalMaterialEuro !== null &&
             result.totalLaborEuro !== null &&
-            new Decimal(result.totalPackagingOperatingEuro ?? "0").gt(0) && (
-              <div className="chart">
+            new Decimal(result.totalPackagingOperatingEuro ?? "0").gt(0) ? (
+              <div
+                className="chart"
+                role="img"
+                aria-label={`Monthly cost breakdown: materials and labels ${money(result.totalMaterialEuro)}, packaging labor ${money(result.totalLaborEuro)}.`}
+              >
                 <Suspense fallback={<p>Loading chart…</p>}>
                   <CostChart
                     data={[
@@ -114,21 +140,98 @@ export function ApiResults({
                     ]}
                   />
                 </Suspense>
+                <div className="chart-center">
+                  <small>MONTHLY TOTAL</small>
+                  <strong>{money(result.totalPackagingOperatingEuro)}</strong>
+                </div>
+              </div>
+            ) : (
+              <div className="chart-empty">
+                <Icon name="wallet" />
+                <strong>{money(result.totalPackagingOperatingEuro)}</strong>
+                <span>
+                  {result.totalPackagingOperatingEuro === null
+                    ? "Add missing cost inputs to see the breakdown."
+                    : "No packaging spend at this volume."}
+                </span>
               </div>
             )}
-          <p>
-            Including recurring costs:{" "}
+            <div className="cost-legend">
+              <div>
+                <span className="legend-dot material" />
+                <span>Materials and labels</span>
+                <strong>{money(result.totalMaterialEuro)}</strong>
+              </div>
+              <div>
+                <span className="legend-dot labor" />
+                <span>Packaging labor</span>
+                <strong>{money(result.totalLaborEuro)}</strong>
+              </div>
+            </div>
+          </div>
+          <div className="cost-detail">
+            <span>Including recurring costs</span>
             <strong>{money(result.totalIncludingRecurringEuro)}</strong>
-          </p>
-          <p>Machine-hours: {decimalText(result.machineHours)}</p>
+          </div>
+          <div className="cost-detail">
+            <span>Machine-hours</span>
+            <strong>
+              {decimalText(result.machineHours)} <small>hrs</small>
+            </strong>
+          </div>
           <p className="footnote">
             Unknown costs stay unknown. Chart values are rounded for display
             only; calculations retain decimal precision.
           </p>
         </section>
-        <section className="panel">
-          <span className="eyebrow">PRODUCTION MIX</span>
-          <h2>Packaging requirements</h2>
+        <section className="panel mix-panel">
+          <div className="panel-heading">
+            <div>
+              <span className="eyebrow">PRODUCTION MIX</span>
+              <h2>Packaging requirements</h2>
+            </div>
+            <span className="section-icon">
+              <Icon name="box" />
+            </span>
+          </div>
+          <div className="mix-heading">
+            <span>Planned production</span>
+            <strong>
+              {decimalText(result.monthlyProductionKg, 6).replace(/\.?0+$/, "")}{" "}
+              <small>kg / month</small>
+            </strong>
+          </div>
+          <div className="mix-bar" aria-hidden="true">
+            {input.formats.map((format, index) => (
+              <span
+                key={format.id}
+                style={{
+                  width: `${format.allocationPercent.value ?? "0"}%`,
+                  background: ["#4f61f6", "#6ed7b2", "#efb86a", "#b896e5"][
+                    index % 4
+                  ],
+                }}
+              />
+            ))}
+          </div>
+          <div
+            className="mix-legend"
+            aria-label="Requested mix by production weight"
+          >
+            {input.formats.map((format, index) => (
+              <span key={format.id}>
+                <i
+                  style={{
+                    background: ["#4f61f6", "#6ed7b2", "#efb86a", "#b896e5"][
+                      index % 4
+                    ],
+                  }}
+                />
+                {format.portionWeightGrams.value ?? "?"} g{" "}
+                <strong>{format.allocationPercent.value ?? "?"}%</strong>
+              </span>
+            ))}
+          </div>
           <div className="table-scroll">
             <table>
               <thead>
@@ -143,13 +246,17 @@ export function ApiResults({
               <tbody>
                 {result.rows.map((r) => (
                   <tr key={r.formatId}>
-                    <th>
+                    <th scope="row">
                       {input.formats.find((f) => f.id === r.formatId)
                         ?.portionWeightGrams.value ?? "?"}{" "}
                       g
                     </th>
-                    <td>{decimalText(r.requestedKg, 6)}</td>
-                    <td>{decimalText(r.packedKg, 6)}</td>
+                    <td>
+                      {new Decimal(r.requestedKg).toDecimalPlaces(6).toString()}
+                    </td>
+                    <td>
+                      {new Decimal(r.packedKg).toDecimalPlaces(6).toString()}
+                    </td>
                     <td>{decimalText(r.packages, 0)}</td>
                     <td>{money(r.materialEuro)}</td>
                   </tr>
@@ -157,7 +264,7 @@ export function ApiResults({
               </tbody>
             </table>
           </div>
-          <p>
+          <p className="mass-summary">
             Packed: {decimalText(result.packedProductionKg, 6)} kg · Unpackaged:{" "}
             <strong>{decimalText(result.unpackagedProductionKg, 6)} kg</strong>
           </p>

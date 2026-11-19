@@ -1,3 +1,4 @@
+import { Icon } from "./components/Icon";
 import { NavLink, Route, Routes, Link } from "react-router-dom";
 import {
   WorkspaceProvider,
@@ -18,7 +19,7 @@ function Shell() {
       <aside className="sidebar">
         <Link to="/" className="brand">
           <span className="brand-mark" aria-hidden="true">
-            P
+            <Icon name="box" />
           </span>
           <span>
             PackPilot<span className="brand-ai"> AI</span>
@@ -33,26 +34,37 @@ function Shell() {
             <small>Pilot workspace</small>
           </div>
         </div>
+        <div className="nav-label">YOUR WORKSPACE</div>
         <nav aria-label="Main navigation">
-          {[
-            { path: "/", name: "Overview", icon: "▦" },
-            { path: "/company", name: "Company profile", icon: "▣" },
-            { path: "/simulator", name: "Scenario simulator", icon: "⇄" },
-            { path: "/inventory", name: "Inventory planning", icon: "▤" },
-          ].map((item) => (
+          {(
+            [
+              { path: "/", name: "Overview", icon: "overview" },
+              { path: "/company", name: "Company profile", icon: "company" },
+              {
+                path: "/simulator",
+                name: "Scenario simulator",
+                icon: "simulator",
+              },
+              { path: "/inventory", name: "Inventory planning", icon: "box" },
+            ] as const
+          ).map((item) => (
             <NavLink key={item.path} to={item.path} end={item.path === "/"}>
-              <span aria-hidden="true">{item.icon}</span>
+              <Icon name={item.icon} />
               {item.name}
             </NavLink>
           ))}
         </nav>
         <div className="sidebar-footer">
+          <div className="sidebar-note">
+            <Icon name="shield" />
+            <strong>Clarity in every decision.</strong>
+            <p>
+              Built on your inputs.
+              <br />
+              Grounded in transparent calculations.
+            </p>
+          </div>
           <span className="live-dot" /> Pilot release
-          <p>
-            Built for informed
-            <br />
-            manufacturing decisions.
-          </p>
         </div>
       </aside>
       <div className="main-column">

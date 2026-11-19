@@ -5,6 +5,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
@@ -48,8 +49,15 @@ it("requires explicit demo entry, preserves exact reference results and persists
   );
   expect(screen.getByTestId("cost-per-kg")).toHaveTextContent("€0.286");
   expect(screen.getByTestId("total-packages")).toHaveTextContent("1,300");
-  for (const count of ["800", "300", "200"])
-    expect(screen.getByRole("cell", { name: count })).toBeInTheDocument();
+  for (const [format, count] of [
+    ["1000 g", "800"],
+    ["500 g", "300"],
+    ["250 g", "200"],
+  ]) {
+    const row = screen.getByRole("rowheader", { name: format }).closest("tr");
+    if (!row) throw new Error("Packaging row missing");
+    expect(within(row).getAllByRole("cell")[2].textContent).toBe(count);
+  }
   change("Monthly production (kg)", "2000");
   expect(screen.queryByTestId("operating-cost")).toBeNull();
   await waitFor(() =>
