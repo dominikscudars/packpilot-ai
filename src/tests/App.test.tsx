@@ -42,6 +42,16 @@ async function openDemo(path = "/") {
 }
 const change = (label: string, value: string) =>
   fireEvent.change(screen.getByLabelText(label), { target: { value } });
+it("points visitors to the local demo when sign-in is not configured", () => {
+  mount();
+  expect(
+    screen.getByText(/Company accounts are not enabled on this demo site yet/),
+  ).toBeInTheDocument();
+  expect(screen.queryByText(/environment variables/)).toBeNull();
+  expect(
+    screen.getByRole("button", { name: "Open local demo" }),
+  ).toBeInTheDocument();
+});
 it("requires explicit demo entry, preserves exact reference results and persists only explicit saves", async () => {
   const view = await openDemo();
   expect(await screen.findByTestId("operating-cost")).toHaveTextContent(
