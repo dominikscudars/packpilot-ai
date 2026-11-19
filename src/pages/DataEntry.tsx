@@ -182,7 +182,7 @@ export function DataEntry() {
     <>
       <header className="page-heading">
         <div>
-          <span className="eyebrow">STEP 1 OF 3</span>
+          <span className="eyebrow">STEP 1 OF 4</span>
           <h1>Enter your data</h1>
           <p>
             Fill in what you know about your packaging. Leave a field empty if
