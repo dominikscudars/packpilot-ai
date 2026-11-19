@@ -7,11 +7,21 @@ export interface Identity {
   userId: string;
   accessToken: string;
 }
+export interface SignUpProfile {
+  name: string;
+  company: string;
+}
 export interface AuthPort {
   current(): Promise<Identity | null>;
   refresh(): Promise<Identity | null>;
   subscribe(listener: (identity: Identity | null) => void): () => void;
   signIn(email: string, password: string): Promise<void>;
+  /** Creates an account; absent when sign-up is not available. */
+  signUp?(
+    email: string,
+    password: string,
+    profile: SignUpProfile,
+  ): Promise<{ needsConfirmation: boolean }>;
   signOut(): Promise<void>;
 }
 const identity = (session: Session | null): Identity | null =>
@@ -42,6 +52,25 @@ export function supabaseAuth(client: SupabaseClient): AuthPort {
         password,
       });
       if (error) throw error;
+    },
+    async signUp(email, password, profile) {
+      const { data, error } = await client.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { full_name: profile.name, company_name: profile.company },
+          emailRedirectTo:
+            typeof window === "undefined" ? undefined : window.location.origin,
+        },
+      });
+      if (error) throw error;
+      // Supabase hides whether an address is already registered: an existing
+      // user comes back with no identities and no session.
+      if (data.user && data.user.identities?.length === 0)
+        throw new Error(
+          "An account with this email may already exist. Try logging in.",
+        );
+      return { needsConfirmation: !data.session };
     },
     async signOut() {
       const { error } = await client.auth.signOut({ scope: "local" });
