@@ -17,8 +17,6 @@ import { assumed } from "../../backend/src/domain/inputs.js";
 
 /** Default Gemini model; override with the GEMINI_MODEL environment variable. */
 export const DEFAULT_GEMINI_MODEL = "gemini-3.8-flash";
-/** Tried when the main model is unavailable; override with GEMINI_FALLBACK_MODEL. */
-export const DEFAULT_FALLBACK_MODEL = "gemini-2.5-flash";
 /** Whole-answer budget, kept below the Vercel function limit (120 s). */
 const DEADLINE_MS = 90_000;
 const MAX_TURNS = 12;
@@ -426,23 +424,24 @@ export async function handleAdvisorRequest(
         retryOptions: { attempts: 3, initialDelay: 1, maxDelay: 4 },
       },
     });
-  const models = [
-    options.model || DEFAULT_GEMINI_MODEL,
-    options.fallbackModel || DEFAULT_FALLBACK_MODEL,
-  ].filter((m, i, all) => all.indexOf(m) === i);
+  // A backup model is tried only when GEMINI_FALLBACK_MODEL is set.
+  const models = [options.model || DEFAULT_GEMINI_MODEL, options.fallbackModel]
+    .filter((m): m is string => Boolean(m))
+    .filter((m, i, all) => all.indexOf(m) === i);
   const deadline = Date.now() + DEADLINE_MS;
-  let lastError: unknown;
+  let firstError: unknown;
   for (const model of models) {
     try {
       return json(200, await advise(client, model, parsed.data, deadline));
     } catch (e) {
-      lastError = e;
+      firstError ??= e;
       // Try the backup model only when the main one is missing or overloaded.
       if (!(e instanceof ApiError) || ![404, 429, 500, 503].includes(e.status))
         break;
     }
   }
-  return errorResponse(lastError);
+  // Report the main model's failure: it is the one to fix.
+  return errorResponse(firstError);
 }
 
 /** Maps Gemini failures to a clear message; never includes the API key. */
