@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Navigate } from "react-router-dom";
 import { Link } from "react-router-dom";
 import { useWorkspace } from "../components/WorkspaceProvider";
 import type { AdvisorReply } from "../advisor/server";
@@ -7,7 +6,6 @@ import { ReportText } from "../components/ReportText";
 import { DataSummary } from "../components/DataSummary";
 import { useRequest } from "../components/AsyncState";
 import { money } from "../components/ApiResults";
-import { DEMO_REFERENCE_NAME } from "../demo/apiDemo";
 import { clearSurvey, loadSurvey } from "../survey/surveyStore";
 import {
   PREPARED_ANSWERS,
@@ -32,7 +30,7 @@ export const ADVISOR_URL = "/api/advisor";
 
 /** Chat with the AI advisor; every figure comes from the PackPilot engine. */
 export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
-  const { baseline, gateway, mode } = useWorkspace();
+  const { baseline, gateway } = useWorkspace();
   const [survey, setSurvey] = useState(loadSurvey);
   const costs = useRequest(JSON.stringify(baseline.input), () =>
     gateway.calculate(baseline.input),
@@ -84,9 +82,6 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
     }
   }
 
-  if (mode === "demo" && baseline.name === DEMO_REFERENCE_NAME)
-    return <Navigate to="/data" replace />;
-
   function showPrepared(item: PreparedAnswer) {
     setError("");
     setTurns([
@@ -112,7 +107,7 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
             Latvian packaging rules. The advisor researches the web, cites its
             sources and tests every option with PackPilot's calculations on your
             operation ({baseline.name}). Change those numbers in{" "}
-            <Link to="/data">step 1</Link>.
+            <Link to="/data">Edit data &amp; costs</Link>.
           </p>
         </div>
       </header>

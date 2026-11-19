@@ -34,6 +34,7 @@ export function AuthGate({
     gateway: Gateway,
     mode: "demo" | "authenticated",
     exit: () => void,
+    userId: string | null,
   ) => ReactNode;
 }) {
   const [config] = useState<AppServices>(
@@ -182,9 +183,14 @@ export function AuthGate({
             {error}
           </div>
         )}
-        {children(gateway, demo ? "demo" : "authenticated", () => {
-          void signOut();
-        })}
+        {children(
+          gateway,
+          demo ? "demo" : "authenticated",
+          () => {
+            void signOut();
+          },
+          demo ? null : (userId ?? null),
+        )}
       </div>
     );
   return (
@@ -212,7 +218,7 @@ export function AuthGate({
             <Icon name="wallet" /> Understand costs
           </span>
           <span>
-            <Icon name="simulator" /> Explore scenarios
+            <Icon name="spark" /> Research options
           </span>
           <span>
             <Icon name="box" /> Plan inventory

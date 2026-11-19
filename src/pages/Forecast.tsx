@@ -5,7 +5,6 @@ import { parseTable } from "../survey/tabulate";
 import { buildForecast } from "../forecast/forecast";
 import { assumed } from "../../backend/src/domain/inputs";
 import { decimalText } from "../components/ApiResults";
-import { DEMO_REFERENCE_NAME } from "../demo/apiDemo";
 
 const sizeLabel = (grams: number) =>
   grams >= 1000 && grams % 1000 === 0 ? `${grams / 1000} kg` : `${grams} g`;
@@ -81,7 +80,7 @@ export function Forecast() {
           <p>
             Skip the typing: copy your monthly sales from Excel and paste them
             here. PackPilot shows the trend for the next six months and can fill
-            step 1 with next month's production and pack mix.
+            your data with next month's production and pack mix.
           </p>
         </div>
       </header>
@@ -91,7 +90,7 @@ export function Forecast() {
         <p className="muted">
           One row per month. First column: the month (e.g. 2026-10). Then one
           column per pack size with a heading such as “1 kg”, “500 g” or “250
-          g”. Your pack sizes from step 1:{" "}
+          g”. Your pack sizes:{" "}
           {formats.map((f) => sizeLabel(f.grams)).join(", ")}.
         </p>
         <label>
@@ -150,7 +149,7 @@ export function Forecast() {
         )}
         {result.unmatched.length > 0 && (
           <p className="notice">
-            Columns not matched to a pack size from step 1 were ignored:{" "}
+            Columns not matched to one of your pack sizes were ignored:{" "}
             {result.unmatched.join(", ")}.
           </p>
         )}
@@ -266,11 +265,6 @@ export function Forecast() {
                 const saved = await saveScenario(
                   {
                     ...baseline,
-                    // Imported numbers make this the company's own data.
-                    name:
-                      baseline.name === DEMO_REFERENCE_NAME
-                        ? "My operation"
-                        : baseline.name,
                     input,
                   },
                   baseline.id === null,
@@ -284,7 +278,7 @@ export function Forecast() {
               }
             }}
           >
-            {busy ? "Saving…" : "Use next month's forecast in step 1 →"}
+            {busy ? "Saving…" : "Use next month's forecast in my data →"}
           </button>
           <p className="footnote">
             A straight-line trend through your monthly totals. It does not know

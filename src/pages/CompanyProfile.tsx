@@ -200,7 +200,7 @@ export function CompanyProfile() {
       <section className="panel">
         <h2>Packaging catalog</h2>
         <p className="muted">
-          Your operation is edited in step 1, Enter your data. Saved scenarios
+          Your operation is edited in Edit data &amp; costs. Saved scenarios
           keep snapshots; catalog changes do not silently rewrite them.
         </p>
         <div className="table-scroll">

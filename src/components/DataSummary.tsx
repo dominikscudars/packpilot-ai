@@ -5,7 +5,7 @@ import { decimalText } from "./ApiResults";
 const show = (q: Quantity, unit = "", digits = 0) =>
   q.value === null ? "not entered" : `${decimalText(q.value, digits)}${unit}`;
 
-/** Read-only "your data" card shown first on every step after step 1. */
+/** Read-only "your data" card shown first on Packaging Insights and features. */
 export function DataSummary({ input }: { input: ScenarioInput }) {
   const machine = input.machines.at(0);
   const cycle =
@@ -14,7 +14,7 @@ export function DataSummary({ input }: { input: ScenarioInput }) {
     <section className="panel data-summary" aria-label="Your data">
       <div className="data-summary-head">
         <h2>Your data</h2>
-        <Link to="/data">Change in step 1</Link>
+        <Link to="/data">Edit data &amp; costs</Link>
       </div>
       <dl>
         <div>

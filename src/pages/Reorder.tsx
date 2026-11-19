@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Navigate } from "react-router-dom";
 import { Decimal } from "decimal.js";
 import type { InventoryResult, Quantity } from "../models/api";
 import { assumed, missing } from "../../backend/src/domain/inputs";
@@ -8,9 +7,8 @@ import { useRequest, RequestState } from "../components/AsyncState";
 import { QuantityField as Q } from "../components/QuantityField";
 import { decimalText } from "../components/ApiResults";
 import { DataSummary } from "../components/DataSummary";
-import { DEMO_REFERENCE_NAME } from "../demo/apiDemo";
 
-/** One packaging item whose monthly use follows from the step 1 data. */
+/** One packaging item whose monthly use follows from the saved data. */
 interface Item {
   id: string;
   name: string;
@@ -73,7 +71,7 @@ const STATUS_TEXT: Record<Status, string> = {
   unknown: "Need stock count",
 };
 
-/** Step 3: when to reorder bags, labels and boxes, from step 1 data. */
+/** Feature: when to reorder bags, labels and boxes, from the saved data. */
 export function Reorder() {
   const { baseline, gateway, mode } = useWorkspace();
   const saved = mode === "demo" ? load() : null;
@@ -132,7 +130,7 @@ export function Reorder() {
             currentStockPackages: entered(Number(stock[item.id])),
             expectedMonthlyConsumptionPackages: assumed(
               String(item.monthlyUse),
-              "Calculated from step 1: production and pack mix.",
+              "Calculated from your data: production and pack mix.",
             ),
             calendarDaysInPlanningMonth: assumed(
               String(monthDays),
@@ -160,9 +158,6 @@ export function Reorder() {
         }),
       ),
   );
-
-  if (mode === "demo" && baseline.name === DEMO_REFERENCE_NAME)
-    return <Navigate to="/data" replace />;
 
   const remember = (next: Partial<Saved>) => {
     setCopied(false);
@@ -207,8 +202,8 @@ export function Reorder() {
           <h1>Stock &amp; orders</h1>
           <p>
             Count what you have on the shelf. PackPilot works out how fast you
-            use bags, labels and boxes from your production in step 1 and tells
-            you what to order and by when.
+            use bags, labels and boxes from your production data and tells you
+            what to order and by when.
           </p>
         </div>
       </header>
@@ -241,7 +236,7 @@ export function Reorder() {
               <small className="muted" data-testid={`use-${item.id}`}>
                 {item.monthlyUse === null
                   ? "Enter kg per box below to calculate."
-                  : `You use about ${count(item.monthlyUse)} a month (from step 1).`}
+                  : `You use about ${count(item.monthlyUse)} a month (from your data).`}
               </small>
             </div>
           ))}
