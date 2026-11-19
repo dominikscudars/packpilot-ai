@@ -28,6 +28,7 @@
   "homepage": "https://github.com/dominikscudars/packpilot-ai#readme",
   "private": true,
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.10.0",
     "@supabase/supabase-js": "^2.119.0",
     "decimal.js": "^10.6.0",
     "react": "^19.3.1",
