@@ -1506,3 +1506,25 @@ fieldset:disabled {
     scroll-behavior: auto !important;
   }
 }
+
+.data-entry-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.radio-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  font-size: 13px;
+  cursor: pointer;
+}
+.radio-option input[type="radio"] {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  padding: 0;
+}

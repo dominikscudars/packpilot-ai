@@ -554,3 +554,40 @@ it("keeps copied current inputs when an earlier alternative save completes", asy
   expect(screen.getByLabelText("Monthly production (kg)")).toHaveValue("1000");
   expect(screen.queryByText("Scenario saved to your company.")).toBeNull();
 });
+it("lets a company enter its own data, add pack sizes and save it as the current operation", async () => {
+  const view = await openDemo("/data");
+  expect(await screen.findByTestId("entry-total")).toHaveTextContent("€286.00");
+  fireEvent.click(screen.getByRole("button", { name: "Clear all fields" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent(/required/i);
+  change("How many kilograms do you produce per month?", "100");
+  change("Pack weight (g) · pack size 1", "500");
+  change("Share of production (%) · pack size 1", "100");
+  change("Bag and label cost (€ per pack) · pack size 1", "0.10");
+  change("Labour cost (€ per pack)", "0.20");
+  expect(screen.getByTestId("share-total")).toHaveTextContent(
+    "Shares add up to 100%.",
+  );
+  await waitFor(() =>
+    expect(screen.getByTestId("entry-total")).toHaveTextContent("€60.00"),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Add pack size" }));
+  expect(screen.getByLabelText("Pack weight (g) · pack size 2")).toHaveValue(
+    "",
+  );
+  expect(screen.getByTestId("share-total")).toHaveTextContent(
+    "Shares entered so far are incomplete.",
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Remove pack size 2" }));
+  await waitFor(() =>
+    expect(screen.getByTestId("entry-total")).toHaveTextContent("€60.00"),
+  );
+  fireEvent.click(
+    screen.getByRole("button", { name: "Save as my current operation" }),
+  );
+  await screen.findByText("Saved as your current operation.");
+  view.unmount();
+  await openDemo();
+  expect(await screen.findByTestId("operating-cost")).toHaveTextContent(
+    "€60.00",
+  );
+});
