@@ -73,8 +73,8 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
           <p>
             Ask how to upgrade your packaging. The advisor tests each idea with
             PackPilot's calculations on your current operation ({baseline.name})
-            and can research machines and materials online. Change the numbers
-            it starts from in <Link to="/data">Enter your data</Link>.
+            and suggests what to ask suppliers. Change the numbers it starts
+            from in <Link to="/data">Enter your data</Link>.
           </p>
         </div>
       </header>

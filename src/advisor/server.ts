@@ -1,5 +1,11 @@
-import Anthropic from "@anthropic-ai/sdk";
-import { betaTool } from "@anthropic-ai/sdk/helpers/beta/json-schema";
+import {
+  ApiError,
+  GoogleGenAI,
+  type Content,
+  type FunctionDeclaration,
+  type GenerateContentParameters,
+  type GenerateContentResponse,
+} from "@google/genai";
 import { z } from "zod";
 import { calculatePackaging } from "../../backend/src/calculation-engine/packaging.js";
 import { compareScenarios } from "../../backend/src/calculation-engine/comparison.js";
@@ -9,9 +15,11 @@ import {
 } from "../../backend/src/domain/scenario.js";
 import { assumed } from "../../backend/src/domain/inputs.js";
 
-export const ADVISOR_MODEL = "claude-opus-5-5";
+/** Default Gemini model; override with the GEMINI_MODEL environment variable. */
+export const DEFAULT_GEMINI_MODEL = "gemini-3.8-flash";
 const MAX_TURNS = 12;
 const MAX_CHARS = 2000;
+const MAX_STEPS = 8;
 
 const SYSTEM_PROMPT = `You are PackPilot AI's packaging advisor for small food manufacturers.
 You help a manufacturer decide how to upgrade their packaging operation: pack sizes, materials, labour and machinery, especially as production grows.
@@ -19,10 +27,10 @@ You help a manufacturer decide how to upgrade their packaging operation: pack si
 Rules:
 - Every cost, time or saving figure you state must come from the evaluate_scenario tool or from the current operation given to you. Never estimate PackPilot figures yourself.
 - To test an idea, call evaluate_scenario with the change. Compare several options when the question allows, then recommend one.
-- Prices or specifications found with web search are external, unverified information: say so, cite the source, and only feed them into evaluate_scenario as labelled assumptions.
+- You have no internet access. For a machine or material price you don't have, test a clearly stated example value with evaluate_scenario, say it is an example, and tell the company to get a supplier quote.
 - Inputs marked "assumption" or "missing" are uncertain; say when a recommendation depends on them and what the company should measure.
 - Do not certify food-contact compliance, shelf life, recyclability or machine compatibility. Say these need supplier or lab confirmation.
-- Write for a non-specialist owner. Lead with the recommendation, then the numbers behind it, then what to check next. Keep it under about 300 words. Use short paragraphs and simple "- " bullets; no tables or headings.`;
+- Write for a non-specialist owner. Lead with the recommendation, then the numbers behind it, then what to check next. Keep it under about 300 words. Use short paragraphs and simple "- " bullets; no tables, headings or bold markers.`;
 
 const evaluationSchema = z
   .object({
@@ -206,6 +214,7 @@ const requestSchema = z.object({
     }),
 });
 export type AdvisorRequest = z.input<typeof requestSchema>;
+type ParsedRequest = z.output<typeof requestSchema>;
 export interface AdvisorReply {
   reply: string;
   sources: { url: string; title: string }[];
@@ -221,146 +230,169 @@ function json(status: number, body: unknown) {
   });
 }
 
-/** Builds the answer: Claude plus the deterministic engine as a tool. */
-export async function advise(
-  client: Anthropic,
-  request: z.output<typeof requestSchema>,
-): Promise<AdvisorReply> {
-  const current = request.scenario;
-  const evaluateTool = betaTool({
-    name: "evaluate_scenario",
-    description:
-      "Run PackPilot's deterministic packaging cost engine on the company's current operation with the given changes applied, and compare it with the current operation. Omitted fields keep their current values. Use the formatId values from the current operation. Returns monthly packaging cost, cost per kg, cost per kg for each pack size, machine and person hours, utilisation, and savings or payback when comparable.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        label: {
-          type: "string",
-          description:
-            "Short name for this option, e.g. 'Double-chamber machine'.",
-        },
-        monthlyProductionKg: { type: "number" },
-        formats: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              formatId: { type: "string" },
-              sharePercent: {
-                type: "number",
-                description:
-                  "Share of production weight; all shares must total 100.",
-              },
-              materialEuroPerPack: {
-                type: "number",
-                description: "Bag and label cost in euro per pack.",
-              },
-            },
-            required: ["formatId"],
-            additionalProperties: false,
-          },
-        },
-        machine: {
+const evaluateDeclaration: FunctionDeclaration = {
+  name: "evaluate_scenario",
+  description:
+    "Run PackPilot's deterministic packaging cost engine on the company's current operation with the given changes applied, and compare it with the current operation. Omitted fields keep their current values. Use the formatId values from the current operation. Returns monthly packaging cost, cost per kg, cost per kg for each pack size, machine and person hours, utilisation, and savings or payback when comparable.",
+  parametersJsonSchema: {
+    type: "object",
+    properties: {
+      label: {
+        type: "string",
+        description:
+          "Short name for this option, e.g. 'Double-chamber machine'.",
+      },
+      monthlyProductionKg: { type: "number" },
+      formats: {
+        type: "array",
+        items: {
           type: "object",
-          description: "Changes to the packing machine.",
           properties: {
-            cycleSeconds: { type: "number" },
-            packsPerCycle: { type: "integer" },
-            operators: { type: "integer" },
-            availableHoursPerMonth: { type: "number" },
-            investmentEuro: {
+            formatId: { type: "string" },
+            sharePercent: {
               type: "number",
-              description: "New purchase cost, used for payback.",
+              description:
+                "Share of production weight; all shares must total 100.",
             },
-            maintenanceEuroPerMonth: { type: "number" },
+            materialEuroPerPack: {
+              type: "number",
+              description: "Bag and label cost in euro per pack.",
+            },
           },
-          additionalProperties: false,
-        },
-        laborEuroPerPack: { type: "number" },
-        laborEuroPerHour: {
-          type: "number",
-          description:
-            "Switches labour to an hourly wage, so a faster machine lowers labour cost.",
+          required: ["formatId"],
         },
       },
-      required: ["label"],
-      additionalProperties: false,
+      machine: {
+        type: "object",
+        description: "Changes to the packing machine.",
+        properties: {
+          cycleSeconds: { type: "number" },
+          packsPerCycle: { type: "integer" },
+          operators: { type: "integer" },
+          availableHoursPerMonth: { type: "number" },
+          investmentEuro: {
+            type: "number",
+            description: "New purchase cost, used for payback.",
+          },
+          maintenanceEuroPerMonth: { type: "number" },
+        },
+      },
+      laborEuroPerPack: { type: "number" },
+      laborEuroPerHour: {
+        type: "number",
+        description:
+          "Switches labour to an hourly wage, so a faster machine lowers labour cost.",
+      },
     },
-    run: (args) => {
-      const parsed = evaluationSchema.safeParse(args);
-      if (!parsed.success)
-        return `Error: invalid input. ${parsed.error.issues
-          .map((i) => `${i.path.join(".")}: ${i.message}`)
-          .join("; ")}`;
-      try {
-        return JSON.stringify(evaluate(current, parsed.data));
-      } catch (e) {
-        return `Error: ${e instanceof Error ? e.message : String(e)}`;
-      }
-    },
-  });
+    required: ["label"],
+  },
+};
 
-  const messages: Anthropic.Beta.BetaMessageParam[] = request.messages.map(
-    (m, i) =>
-      i === 0
-        ? {
-            role: "user",
-            content: `The company's current operation, as PackPilot JSON (inputs with provenance, and engine results):\n${inputContext(current)}\n\nQuestion: ${m.content}`,
-          }
-        : { role: m.role, content: m.content },
-  );
+/** The part of the Gemini client the advisor uses (injectable for tests). */
+export interface GeminiModels {
+  models: {
+    generateContent(
+      params: GenerateContentParameters,
+    ): Promise<
+      Pick<GenerateContentResponse, "candidates" | "functionCalls" | "text">
+    >;
+  };
+}
 
-  const final = await client.beta.messages.toolRunner({
-    model: ADVISOR_MODEL,
-    max_tokens: 16000,
-    max_iterations: 8,
-    betas: ["server-side-fallback-2026-07-01"],
-    fallbacks: "default",
-    output_config: { effort: "medium" },
-    system: SYSTEM_PROMPT,
-    tools: [
-      evaluateTool,
-      { type: "web_search_20260209", name: "web_search", max_uses: 3 },
-    ],
-    messages,
-  });
-
-  if (final.stop_reason === "refusal")
+function runTool(
+  current: ScenarioInput,
+  name: string | undefined,
+  args: unknown,
+): Record<string, unknown> {
+  if (name !== "evaluate_scenario") return { error: `Unknown tool ${name}.` };
+  const parsed = evaluationSchema.safeParse(args);
+  if (!parsed.success)
     return {
-      reply:
-        "The advisor could not answer this question. Try rephrasing it as a question about your packaging operation.",
-      sources: [],
+      error: `Invalid input. ${parsed.error.issues
+        .map((i) => `${i.path.join(".")}: ${i.message}`)
+        .join("; ")}`,
     };
-  const sources = new Map<string, string>();
-  const text: string[] = [];
-  for (const block of final.content) {
-    if (block.type !== "text") continue;
-    text.push(block.text);
-    for (const c of block.citations ?? [])
-      if (c.type === "web_search_result_location")
-        sources.set(c.url, c.title ?? c.url);
+  try {
+    return { output: evaluate(current, parsed.data) };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
   }
-  const reply = text.join("").trim();
+}
+
+/** Builds the answer: Gemini plus the deterministic engine as a tool. */
+export async function advise(
+  ai: GeminiModels,
+  model: string,
+  request: ParsedRequest,
+): Promise<AdvisorReply> {
+  const current = request.scenario;
+  const contents: Content[] = request.messages.map((m, i) => ({
+    role: m.role === "assistant" ? "model" : "user",
+    parts: [
+      {
+        text:
+          i === 0
+            ? `The company's current operation, as PackPilot JSON (inputs with provenance, and engine results):\n${inputContext(current)}\n\nQuestion: ${m.content}`
+            : m.content,
+      },
+    ],
+  }));
+  for (let step = 0; step < MAX_STEPS; step++) {
+    const response = await ai.models.generateContent({
+      model,
+      contents,
+      config: {
+        systemInstruction: SYSTEM_PROMPT,
+        tools: [{ functionDeclarations: [evaluateDeclaration] }],
+        maxOutputTokens: 8192,
+      },
+    });
+    const calls = response.functionCalls ?? [];
+    if (calls.length === 0) {
+      const reply = (response.text ?? "").trim();
+      return {
+        reply: reply || "The advisor returned no answer. Please try again.",
+        sources: [],
+      };
+    }
+    // Send the model's turn back unchanged (it may carry thought signatures).
+    const modelTurn = response.candidates?.[0]?.content ?? {
+      role: "model",
+      parts: calls.map((functionCall) => ({ functionCall })),
+    };
+    contents.push(modelTurn);
+    contents.push({
+      role: "user",
+      parts: calls.map((call) => ({
+        functionResponse: {
+          id: call.id,
+          name: call.name,
+          response: runTool(current, call.name, call.args),
+        },
+      })),
+    });
+  }
   return {
     reply:
-      reply ||
-      (final.stop_reason === "pause_turn" || final.stop_reason === "tool_use"
-        ? "The advisor ran out of steps before finishing. Try a narrower question."
-        : "The advisor returned no answer. Please try again."),
-    sources: [...sources].map(([url, title]) => ({ url, title })),
+      "The advisor ran out of steps before finishing. Try a narrower question.",
+    sources: [],
   };
 }
 
 /** HTTP entry point shared by the Vercel function and tests. */
 export async function handleAdvisorRequest(
   request: Request,
-  options: { apiKey: string | undefined; client?: Anthropic },
+  options: {
+    apiKey: string | undefined;
+    model?: string;
+    client?: GeminiModels;
+  },
 ): Promise<Response> {
   if (request.method !== "POST") return json(405, { error: "Use POST." });
   if (!options.apiKey && !options.client)
     return json(503, {
       error:
-        "The AI advisor is not set up yet: the server has no ANTHROPIC_API_KEY.",
+        "The AI advisor is not set up yet: the server has no GEMINI_API_KEY.",
     });
   let body: unknown;
   try {
@@ -373,22 +405,33 @@ export async function handleAdvisorRequest(
     return json(400, {
       error: `Invalid request: ${parsed.error.issues[0]?.message ?? "unknown"}`,
     });
-  const client = options.client ?? new Anthropic({ apiKey: options.apiKey });
+  const client = options.client ?? new GoogleGenAI({ apiKey: options.apiKey });
   try {
-    return json(200, await advise(client, parsed.data));
+    return json(
+      200,
+      await advise(client, options.model || DEFAULT_GEMINI_MODEL, parsed.data),
+    );
   } catch (e) {
-    if (e instanceof Anthropic.AuthenticationError)
-      return json(502, {
-        error: "The server's Anthropic API key was rejected.",
-      });
-    if (e instanceof Anthropic.RateLimitError)
-      return json(429, {
-        error: "The advisor is busy. Try again in a minute.",
-      });
-    if (e instanceof Anthropic.APIError)
-      return json(502, {
-        error: `The AI service failed (${e.status ?? "network"}).`,
-      });
+    if (e instanceof ApiError) {
+      if (e.status === 400 && /api key/i.test(e.message))
+        return json(502, {
+          error: "The server's Gemini API key was rejected.",
+        });
+      if (e.status === 401 || e.status === 403)
+        return json(502, {
+          error: "The server's Gemini API key was rejected.",
+        });
+      if (e.status === 404)
+        return json(502, {
+          error:
+            "The configured Gemini model was not found. Check GEMINI_MODEL.",
+        });
+      if (e.status === 429)
+        return json(429, {
+          error: "The advisor is busy or out of quota. Try again later.",
+        });
+      return json(502, { error: `The AI service failed (${e.status}).` });
+    }
     return json(500, { error: "The advisor failed unexpectedly." });
   }
 }
