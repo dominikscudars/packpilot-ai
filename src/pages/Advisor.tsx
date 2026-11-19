@@ -68,7 +68,7 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
     <>
       <header className="page-heading">
         <div>
-          <span className="eyebrow">AI RESEARCH ASSISTANT</span>
+          <span className="eyebrow">STEP 5 OF 5</span>
           <h1>Upgrade advisor</h1>
           <p>
             Ask how to upgrade your packaging. The advisor tests each idea with

@@ -1,20 +1,25 @@
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
+import { DEMO_REFERENCE_NAME } from "../demo/apiDemo";
 import { Icon } from "../components/Icon";
 import { useWorkspace } from "../components/WorkspaceProvider";
 import { useRequest, RequestState } from "../components/AsyncState";
 import { ApiResults } from "../components/ApiResults";
 import { ScenarioPanel } from "../components/ScenarioPanel";
+import { NextStep } from "../components/NextStep";
 export function Dashboard() {
   const { baseline, setBaseline, gateway, mode } = useWorkspace();
   const state = useRequest(JSON.stringify(baseline.input), () =>
     gateway.calculate(baseline.input),
   );
+  // Step 1 comes first: the built-in demo example is not the visitor's data.
+  if (mode === "demo" && baseline.name === DEMO_REFERENCE_NAME)
+    return <Navigate to="/data" replace />;
   return (
     <>
       <header className="page-heading">
         <div>
-          <span className="eyebrow">YOUR OPERATIONS, AT A GLANCE</span>
-          <h1>Overview</h1>
+          <span className="eyebrow">STEP 2 OF 5</span>
+          <h1>Your costs</h1>
           <p>
             {mode === "demo"
               ? "A clearer view of your packaging costs. Explore the hypothetical pilot inputs."
@@ -36,6 +41,7 @@ export function Dashboard() {
         draft={baseline}
         onChange={setBaseline}
       />
+      <NextStep to="/simulator" label="compare scenarios" />
     </>
   );
 }

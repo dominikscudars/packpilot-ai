@@ -244,8 +244,9 @@ export function WorkspaceProvider({
       </div>
       {mode === "demo" && (
         <div className="notice demo-banner">
-          OG TOFU demonstration. The 80% / 15% / 5% weight mix is hypothetical.
-          Changes stay in this browser and are never uploaded.
+          Demo: values marked “OG TOFU” come from an interview with the company;
+          estimates are labelled as such. Everything stays in this browser and
+          is never uploaded.
         </div>
       )}
       {!companies ? (

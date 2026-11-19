@@ -8,6 +8,7 @@ import {
   decimalText,
 } from "../components/ApiResults";
 import { ScenarioPanel } from "../components/ScenarioPanel";
+import { NextStep } from "../components/NextStep";
 export function Simulator() {
   const { baseline, alternative, setAlternative, gateway } = useWorkspace();
   const comparisonKey = JSON.stringify([baseline.input, alternative.input]);
@@ -21,7 +22,7 @@ export function Simulator() {
     <>
       <header className="page-heading">
         <div>
-          <span className="eyebrow">EXPLORE THE POSSIBILITIES</span>
+          <span className="eyebrow">STEP 3 OF 5</span>
           <h1>Scenario simulator</h1>
           <p>
             Compare an independent alternative against the current overview
@@ -94,6 +95,7 @@ export function Simulator() {
         draft={alternative}
         onChange={setAlternative}
       />
+      <NextStep to="/inventory" label="plan your packaging stock" />
     </>
   );
 }
