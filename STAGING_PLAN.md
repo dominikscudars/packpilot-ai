@@ -32,7 +32,7 @@ Use provider dashboards or managed secret settings for credentials. Do not paste
 
 ## Hold deployment automation
 
-`vercel.json` sets `git.deploymentEnabled: false`, which [disables Vercel Git-triggered deployments](https://vercel.com/docs/project-configuration/git-configuration). It does not disable dashboard/CLI deployments or every external integration. Before connecting accounts, also leave Render auto-deploy off and inspect Vercel/Render project settings, deploy hooks and external automation. Importing a provider project can itself trigger its first deployment; do that only after explicit deployment authorization. No account settings were inspected or changed during this review.
+Vercel Git-triggered deployments are enabled: Dominik authorized deploying the frontend demo from `main` on 19 November 2026, so each push to `main` deploys the demo. To stop this, set [`git.deploymentEnabled: false`](https://vercel.com/docs/project-configuration/git-configuration) in `vercel.json`; that still does not disable dashboard/CLI deployments or every external integration. Before connecting accounts, also leave Render auto-deploy off and inspect Vercel/Render project settings, deploy hooks and external automation. Importing a provider project can itself trigger its first deployment; do that only after explicit deployment authorization. No account settings were inspected or changed during this review.
 
 After authorization, deploy only the fully reviewed combined revision. Keep automatic previews off until intentionally enabled in a separate reviewed change. This repository's CI only installs, tests and builds.
 
