@@ -184,6 +184,7 @@ The integrated frontend now uses this policy in authenticated and explicit demo 
 - Per-package labor cost = packages × euro/package; hourly labor cost = person-hours × euro/person-hour. Never both.
 - Packaging operating cost = material + labor.
 - Unit cost = packaging operating cost / planned or packed kg, as labeled. At zero production, packaging quantities/costs/hours are zero and unit costs are null.
+- Per-format packaging cost = that format's material + labor. Per-format unit cost = per-format packaging cost / that format's packed kg; it is null when the format packs no packages or a required input is unknown. Format rows sum to the scenario's packaging operating cost; recurring machine costs are not split between formats.
 - Utilization percent = machine-hours / declared available machine-hours × 100. Missing availability gives null.
 
 Throughput is an average continuous production rate; the backend does not round to full machine cycles or add setup/downtime. Active machine maintenance is charged once per month, including at zero production if assigned to a positive-share format. Additional monthly operating costs are separate. Missing timing/staffing preserves unknown hours; per-package labor remains calculable. Any missing required material or labor input makes that category and aggregate unknown; unaffected categories remain available.

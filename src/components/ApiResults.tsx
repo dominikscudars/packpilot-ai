@@ -240,7 +240,10 @@ export function ApiResults({
                   <th>Requested kg</th>
                   <th>Packed kg</th>
                   <th>Packages</th>
+                  <th>€ per packed kg</th>
                   <th>Materials</th>
+                  <th>Labor</th>
+                  <th>Packaging cost</th>
                 </tr>
               </thead>
               <tbody>
@@ -258,7 +261,14 @@ export function ApiResults({
                       {new Decimal(r.packedKg).toDecimalPlaces(6).toString()}
                     </td>
                     <td>{decimalText(r.packages, 0)}</td>
+                    <td>
+                      {r.packages === 0
+                        ? "n/a"
+                        : money(r.packagingEuroPerPackedKg, 3)}
+                    </td>
                     <td>{money(r.materialEuro)}</td>
+                    <td>{money(r.laborEuro)}</td>
+                    <td>{money(r.packagingOperatingEuro)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -269,10 +279,11 @@ export function ApiResults({
             <strong>{decimalText(result.unpackagedProductionKg, 6)} kg</strong>
           </p>
           <p className="footnote">
-            Whole packages never invent extra production. The engine may adjust
-            the mix to fill available mass; infeasible residuals remain
-            unpackaged. Machine time uses continuous throughput, excluding setup
-            and downtime.
+            Euro per packed kg compares formats: smaller portions need more
+            packages, labels and handling time for each kilogram. Whole packages
+            never invent extra production. The engine may adjust the mix to fill
+            available mass; infeasible residuals remain unpackaged. Machine time
+            uses continuous throughput, excluding setup and downtime.
           </p>
         </section>
       </div>

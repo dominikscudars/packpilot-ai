@@ -107,14 +107,22 @@ export function calculatePackaging(raw: ScenarioInput) {
           : personHours !== null && input.labor.euroPerPersonHour.value !== null
             ? personHours.times(input.labor.euroPerPersonHour.value)
             : null;
+    const packedKg = amount.times(formats[i].grams).div(1000);
+    const operating = total([material, labor]);
     return {
       id: f.id,
       machineId: f.machineId,
       packages,
       requestedKg: allocation.targetsGrams[i].div(1000),
-      packedKg: amount.times(formats[i].grams).div(1000),
+      packedKg,
       material,
       labor,
+      operating,
+      // Per-format unit cost uses this format's packed mass: it is the cost of
+      // the packages actually produced, so the small-portion premium is visible.
+      euroPerPackedKg: packedKg.isZero()
+        ? null
+        : (operating?.div(packedKg) ?? null),
       machineHours,
       personHours,
     };
@@ -200,6 +208,8 @@ export function calculatePackaging(raw: ScenarioInput) {
       allocationDifferenceKg: output(r.packedKg.minus(r.requestedKg))!,
       materialEuro: output(r.material),
       laborEuro: output(r.labor),
+      packagingOperatingEuro: output(r.operating),
+      packagingEuroPerPackedKg: output(r.euroPerPackedKg),
       machineHours: output(r.machineHours),
       personHours: output(r.personHours),
     })),

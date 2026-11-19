@@ -49,14 +49,17 @@ it("requires explicit demo entry, preserves exact reference results and persists
   );
   expect(screen.getByTestId("cost-per-kg")).toHaveTextContent("€0.286");
   expect(screen.getByTestId("total-packages")).toHaveTextContent("1,300");
-  for (const [format, count] of [
-    ["1000 g", "800"],
-    ["500 g", "300"],
-    ["250 g", "200"],
+  for (const [format, count, total, perKg] of [
+    ["1000 g", "800", "€176.00", "€0.220"],
+    ["500 g", "300", "€66.00", "€0.440"],
+    ["250 g", "200", "€44.00", "€0.880"],
   ]) {
     const row = screen.getByRole("rowheader", { name: format }).closest("tr");
     if (!row) throw new Error("Packaging row missing");
-    expect(within(row).getAllByRole("cell")[2].textContent).toBe(count);
+    const cells = within(row).getAllByRole("cell");
+    expect(cells[2].textContent).toBe(count);
+    expect(cells[3].textContent).toBe(perKg);
+    expect(cells[6].textContent).toBe(total);
   }
   change("Monthly production (kg)", "2000");
   expect(screen.queryByTestId("operating-cost")).toBeNull();

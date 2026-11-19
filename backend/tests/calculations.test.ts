@@ -27,6 +27,50 @@ describe("packaging engine", () => {
     });
     expect(Number(result.machineHours)).toBeCloseTo((650 * 70) / 3600, 12);
   });
+  it("reports per-format packaging cost per packed kg for the OG TOFU reference", () => {
+    const result = calculatePackaging(createDemoScenario());
+    expect(
+      result.rows.map((r) => [
+        r.materialEuro,
+        r.laborEuro,
+        r.packagingOperatingEuro,
+        r.packagingEuroPerPackedKg,
+      ]),
+    ).toEqual([
+      ["56", "120", "176", "0.22"],
+      ["21", "45", "66", "0.44"],
+      ["14", "30", "44", "0.88"],
+    ]);
+    const rowTotal = result.rows.reduce(
+      (sum, r) => sum + Number(r.packagingOperatingEuro),
+      0,
+    );
+    expect(rowTotal).toBe(Number(result.totalPackagingOperatingEuro));
+  });
+  it("prices hourly labor per format from that format's machine time", () => {
+    const s = createDemoScenario();
+    s.labor = { method: "hourly", euroPerPersonHour: q("18") };
+    const r = calculatePackaging(s);
+    // 250 g: 200 packages × 35 s = 1.9444… h × €18 = €35; + €14 material.
+    expect(Number(r.rows[2].packagingOperatingEuro)).toBeCloseTo(49, 12);
+    expect(Number(r.rows[2].packagingEuroPerPackedKg)).toBeCloseTo(0.98, 12);
+    expect(Number(r.rows[0].packagingEuroPerPackedKg)).toBeCloseTo(0.245, 12);
+  });
+  it("keeps per-format unit cost unknown or not applicable instead of zero", () => {
+    const s = createDemoScenario();
+    s.formats[1].materialCost = {
+      method: "combined",
+      combinedEuroPerPackage: missing(),
+    };
+    s.formats[2].allocationPercent = q("0");
+    s.formats[0].allocationPercent = q("85");
+    const r = calculatePackaging(s);
+    expect(r.rows[0].packagingEuroPerPackedKg).toBe("0.22");
+    expect(r.rows[1].packagingOperatingEuro).toBeNull();
+    expect(r.rows[1].packagingEuroPerPackedKg).toBeNull();
+    expect(r.rows[2].packagingOperatingEuro).toBe("0");
+    expect(r.rows[2].packagingEuroPerPackedKg).toBeNull();
+  });
   it.each(["500", "2000", "10000"])("scales to %s kg", (kg) => {
     const s = createDemoScenario();
     s.monthlyProductionKg = q(kg);
