@@ -1,4 +1,5 @@
 import { Icon } from "./Icon";
+import { fieldLabel, friendlyNote } from "./guidance";
 import { lazy, Suspense } from "react";
 import { Decimal } from "decimal.js";
 import type { PackagingCostResult, ScenarioInput } from "../models/api";
@@ -23,26 +24,54 @@ export function Notes({
     exclusions?: string[];
   };
 }) {
+  const notes = data.warnings.map(friendlyNote);
+  const steps = notes.filter((n) => !n.attention);
+  const readable = (s: string) => {
+    const [, key, rest] = /^(input\.[\w.]+): (.*)$/.exec(s) ?? [];
+    return key ? `${fieldLabel(key)}: ${rest}` : s;
+  };
   return (
     <>
       <div aria-live="polite">
-        {data.warnings.map((w, i) => (
-          <p className="notice" key={i}>
-            {w}
-          </p>
-        ))}
+        {notes
+          .filter((n) => n.attention)
+          .map((n, i) => (
+            <p className="notice attention" key={i}>
+              {n.text}
+            </p>
+          ))}
+        {steps.length > 0 && <Guidance items={steps.map((n) => n.text)} />}
       </div>
       <details className="panel result-notes">
-        <summary>Assumptions, missing inputs and exclusions</summary>
+        <summary>How we calculated this: assumptions and open inputs</summary>
         {[
-          ...data.assumptions,
-          ...(data.missingInputs ?? []).map((i) => `Missing: ${i}`),
+          ...data.assumptions.map(readable),
+          ...(data.missingInputs ?? []).map(
+            (i) => `Still needed: ${fieldLabel(i)}`,
+          ),
           ...(data.exclusions ?? []),
         ].map((s, i) => (
           <p key={i}>{s}</p>
         ))}
       </details>
     </>
+  );
+}
+/** Calm "next step" card for incomplete inputs; not an error. */
+export function Guidance({ items }: { items: string[] }) {
+  return (
+    <div className="notice guidance" role="status">
+      <span className="guidance-label">Next step · setup guidance</span>
+      {items.length === 1 ? (
+        <p>{items[0]}</p>
+      ) : (
+        <ul>
+          {items.map((t) => (
+            <li key={t}>{t}</li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 export function ApiResults({

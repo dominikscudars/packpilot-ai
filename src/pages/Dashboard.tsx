@@ -33,6 +33,7 @@ export function Dashboard() {
       <RequestState
         error={state.error}
         onRetry={state.retry}
+        guidance={state.guidance}
         loading={!state.data && !state.error}
       />
       {state.data && <ApiResults result={state.data} input={baseline.input} />}

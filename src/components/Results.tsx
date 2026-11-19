@@ -8,6 +8,8 @@ import type {
   ProductionScenario,
 } from "../models/types";
 import { number, euro } from "./format";
+import { Guidance } from "./ApiResults";
+import { friendlyNote } from "./guidance";
 export { number, euro } from "./format";
 export function evaluate(
   scenario: ProductionScenario,
@@ -77,11 +79,9 @@ export function Results({
   ];
   return (
     <>
-      {result.warnings.map((w) => (
-        <div className="notice" role="status" key={w}>
-          {w}
-        </div>
-      ))}
+      {result.warnings.length > 0 && (
+        <Guidance items={result.warnings.map((w) => friendlyNote(w).text)} />
+      )}
       <Metrics result={result} />
       <div className="result-grid">
         <section className="panel">
