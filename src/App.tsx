@@ -1,5 +1,13 @@
 import { Icon } from "./components/Icon";
-import { NavLink, Navigate, Route, Routes, Link } from "react-router-dom";
+import { useEffect } from "react";
+import {
+  NavLink,
+  Navigate,
+  Route,
+  Routes,
+  Link,
+  useLocation,
+} from "react-router-dom";
 import {
   WorkspaceProvider,
   useWorkspace,
@@ -10,8 +18,15 @@ import { CompanyProfile } from "./pages/CompanyProfile";
 import { DataEntry } from "./pages/DataEntry";
 import { Advisor } from "./pages/Advisor";
 import { Reorder } from "./pages/Reorder";
+import { Survey } from "./pages/Survey";
+import { Forecast } from "./pages/Forecast";
 function Shell() {
   const { company, mode } = useWorkspace();
+  const { pathname } = useLocation();
+  // Each page starts at the top, not at the previous page's scroll position.
+  useEffect(() => {
+    window.scrollTo?.(0, 0);
+  }, [pathname]);
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main">
@@ -35,22 +50,32 @@ function Shell() {
             <small>Pilot workspace</small>
           </div>
         </div>
-        <div className="nav-label">YOUR WORKSPACE</div>
+        <div className="nav-label">YOUR STEPS</div>
         <nav aria-label="Main navigation">
           {(
             [
               { path: "/data", name: "1. Enter your data", icon: "form" },
               { path: "/", name: "2. Your costs", icon: "overview" },
-              { path: "/reorder", name: "3. When to reorder", icon: "box" },
-              {
-                path: "/advisor",
-                name: "4. Research & advice",
-                icon: "spark",
-              },
-              { path: "/company", name: "Company profile", icon: "company" },
+              { path: "/advisor", name: "3. Market research", icon: "spark" },
             ] as const
           ).map((item) => (
             <NavLink key={item.path} to={item.path} end={item.path === "/"}>
+              <Icon name={item.icon} />
+              {item.name}
+            </NavLink>
+          ))}
+        </nav>
+        <div className="nav-label">TOOLS</div>
+        <nav aria-label="Tools">
+          {(
+            [
+              { path: "/forecast", name: "Sales forecast", icon: "chart" },
+              { path: "/reorder", name: "Stock & orders", icon: "box" },
+              { path: "/survey", name: "Customer survey", icon: "survey" },
+              { path: "/company", name: "Company profile", icon: "company" },
+            ] as const
+          ).map((item) => (
+            <NavLink key={item.path} to={item.path}>
               <Icon name={item.icon} />
               {item.name}
             </NavLink>
@@ -88,6 +113,8 @@ function Shell() {
             <Route path="/company" element={<CompanyProfile />} />
             <Route path="/simulator" element={<Navigate to="/" replace />} />
             <Route path="/reorder" element={<Reorder />} />
+            <Route path="/survey" element={<Survey />} />
+            <Route path="/forecast" element={<Forecast />} />
             <Route
               path="/inventory"
               element={<Navigate to="/reorder" replace />}

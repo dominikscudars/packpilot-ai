@@ -11,6 +11,8 @@ const paths = {
   scale: "M12 3v18 M5 21h14 M4 7h16 M6 7l-4 8h8L6 7z M18 7l-4 8h8l-4-8z",
   clock: "M12 8v5l3 2 M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0",
   arrow: "M4 12h16 M14 6l6 6-6 6",
+  chart: "M4 20V4 M4 20h16 M8 16l4-5 3 3 5-7",
+  survey: "M6 3h12v18H6z M9 8h6 M9 12h6 M9 16h3 M3 8l1 1 2-2",
   form: "M5 3h14v18H5z M9 8h6 M9 12h6 M9 16h3",
   spark: "m12 3 2.4 6.6L21 12l-6.6 2.4L12 21l-2.4-6.6L3 12l6.6-2.4L12 3z",
   shield: "m12 2 8 3v6c0 5-8 11-8 11S4 16 4 11V5l8-3z m-4 10 3 3 5-6",

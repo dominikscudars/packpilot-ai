@@ -1,9 +1,14 @@
 import { useState } from "react";
+import { Navigate } from "react-router-dom";
 import { Link } from "react-router-dom";
 import { useWorkspace } from "../components/WorkspaceProvider";
 import type { AdvisorReply } from "../advisor/server";
 import { ReportText } from "../components/ReportText";
 import { DataSummary } from "../components/DataSummary";
+import { useRequest } from "../components/AsyncState";
+import { money } from "../components/ApiResults";
+import { DEMO_REFERENCE_NAME } from "../demo/apiDemo";
+import { clearSurvey, loadSurvey } from "../survey/surveyStore";
 import {
   PREPARED_ANSWERS,
   PREPARED_DATE,
@@ -27,7 +32,11 @@ export const ADVISOR_URL = "/api/advisor";
 
 /** Chat with the AI advisor; every figure comes from the PackPilot engine. */
 export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
-  const { baseline } = useWorkspace();
+  const { baseline, gateway, mode } = useWorkspace();
+  const [survey, setSurvey] = useState(loadSurvey);
+  const costs = useRequest(JSON.stringify(baseline.input), () =>
+    gateway.calculate(baseline.input),
+  );
   const [turns, setTurns] = useState<Turn[]>([]);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
@@ -47,6 +56,7 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           scenario: baseline.input,
+          ...(survey ? { context: survey.text } : {}),
           // Prepared answers are reference material, not part of the chat.
           messages: next
             .filter((t) => !t.prepared)
@@ -74,6 +84,9 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
     }
   }
 
+  if (mode === "demo" && baseline.name === DEMO_REFERENCE_NAME)
+    return <Navigate to="/data" replace />;
+
   function showPrepared(item: PreparedAnswer) {
     setError("");
     setTurns([
@@ -92,8 +105,8 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
     <>
       <header className="page-heading">
         <div>
-          <span className="eyebrow">STEP 4 OF 4</span>
-          <h1>Research &amp; advice</h1>
+          <span className="eyebrow">STEP 3 OF 3</span>
+          <h1>Market research</h1>
           <p>
             Ask about machinery, packaging materials, suppliers or EU and
             Latvian packaging rules. The advisor researches the web, cites its
@@ -105,6 +118,51 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
       </header>
 
       <DataSummary input={baseline.input} />
+
+      <section className="panel research-basis" aria-label="Research basis">
+        <h2>The research starts from your costs</h2>
+        {costs.data ? (
+          <p data-testid="research-costs">
+            Packaging costs you{" "}
+            <strong>
+              {money(costs.data.totalPackagingOperatingEuro)} a month
+            </strong>{" "}
+            ({money(costs.data.packagingEuroPerPlannedKg, 3)} per kg):{" "}
+            {costs.data.rows
+              .map((row) => {
+                const grams = baseline.input.formats.find(
+                  (f) => f.id === row.formatId,
+                )?.portionWeightGrams.value;
+                return `${grams ?? "?"} g ${money(row.packagingEuroPerPackedKg, 3)}/kg`;
+              })
+              .join(" · ")}
+            . Every option is compared with these figures.
+          </p>
+        ) : (
+          <p className="muted">Calculating your costs…</p>
+        )}
+        {survey ? (
+          <p className="survey-attached" data-testid="survey-attached">
+            Customer survey attached ({survey.responses} responses): the
+            assistant uses it in live questions.{" "}
+            <button
+              type="button"
+              className="link-button"
+              onClick={() => {
+                clearSurvey();
+                setSurvey(null);
+              }}
+            >
+              Remove
+            </button>
+          </p>
+        ) : (
+          <p className="muted">
+            Tip: run a customer survey with the Customer survey tool and attach
+            the results here.
+          </p>
+        )}
+      </section>
 
       <section className="panel prepared-panel">
         <h2>Prepared research for OG TOFU</h2>

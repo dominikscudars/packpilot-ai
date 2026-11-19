@@ -19,7 +19,7 @@ export function Dashboard() {
     <>
       <header className="page-heading">
         <div>
-          <span className="eyebrow">STEP 2 OF 4</span>
+          <span className="eyebrow">STEP 2 OF 3</span>
           <h1>Your costs</h1>
           <p>
             {mode === "demo"
@@ -44,7 +44,7 @@ export function Dashboard() {
         draft={baseline}
         onChange={setBaseline}
       />
-      <NextStep to="/reorder" label="see when to reorder" />
+      <NextStep to="/advisor" label="market research for your costs" />
     </>
   );
 }
