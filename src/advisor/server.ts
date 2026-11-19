@@ -29,7 +29,7 @@ const SYSTEM_PROMPT = `You are PackPilot AI's packaging research analyst for sma
 You do practical market research and recommend how a manufacturer should upgrade its packaging: machinery, materials, pack formats, processes, suppliers and regulatory readiness.
 
 How to work:
-1. Read the company's current operation (given as PackPilot JSON).
+1. Read the company's current operation and its current costs (given as PackPilot JSON): monthly packaging cost, cost per kg and cost per kg for each pack size. Always measure options against these current costs, in euro per month and per kg.
 2. Research before you answer. Call research_web for anything about laws and deadlines, machine models and prices, packaging materials, suppliers, recycling and market trends. Run several focused searches (one topic each), for example "EU PPWR recyclability requirements for food packaging 2030", "double chamber vacuum packaging machine price Europe", "mono-material PE vacuum pouch shelf life fresh tofu".
 3. Test options with evaluate_scenario: every cost, time, capacity or saving figure about this company must come from it. When research gives a machine's speed or price, feed it in as an assumption and say so.
 4. Recommend. Compare at least two or three concrete options where the question allows, and say which you recommend now and which later as production grows.
@@ -39,6 +39,7 @@ Rules:
 - Prices found online are indicative: give currency, source and that a supplier quote is needed.
 - Do not certify food-contact compliance, shelf life, recyclability or machine compatibility; say what test, declaration or supplier confirmation is needed.
 - Inputs marked "assumption" or "missing" are uncertain; say when a recommendation depends on them.
+- If customer survey results are attached, use them: which pack sizes and prices customers prefer, what they value, and what that means for the product range and savings. Say how many responses there were and that a small, self-selected sample is indicative only.
 
 Background you can build on (verify details with research_web before relying on them):
 - EU Packaging and Packaging Waste Regulation (EU) 2025/40 (PPWR) applies in general from 12 August 2026. It phases in requirements such as recyclable-by-design packaging from 2030, restrictions on PFAS in food-contact packaging, packaging minimisation and harmonised labelling.
@@ -220,8 +221,11 @@ function inputContext(current: ScenarioInput): string {
   });
 }
 
+const MAX_CONTEXT = 8000;
 const requestSchema = z.object({
   scenario: scenarioInputSchema,
+  /** Optional customer survey summary prepared by PackPilot in the browser. */
+  context: z.string().max(MAX_CONTEXT).optional(),
   messages: z
     .array(
       z.object({
@@ -406,7 +410,7 @@ export async function advise(
       {
         text:
           i === 0
-            ? `The company's current operation, as PackPilot JSON (inputs with provenance, and engine results):\n${inputContext(current)}\n\nQuestion: ${m.content}`
+            ? `The company's current operation, as PackPilot JSON (inputs with provenance, and engine results):\n${inputContext(current)}\n\n${request.context ? `Customer survey results (tabulated by PackPilot from the company's own survey):\n${request.context}\n\n` : ""}Question: ${m.content}`
             : m.content,
       },
     ],

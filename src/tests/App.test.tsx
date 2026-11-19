@@ -549,7 +549,8 @@ it("asks the upgrade advisor with the current operation and shows its answer", a
   );
   vi.stubGlobal("fetch", fetchMock);
   try {
-    await openDemo("/advisor");
+    await openDemo();
+    fireEvent.click(screen.getByRole("link", { name: /Market research/ }));
     fireEvent.click(
       await screen.findByRole("button", {
         name: /cheaper per kilogram/,
@@ -583,7 +584,8 @@ it("shows prepared OG TOFU research without calling the AI, and keeps it out of 
   );
   vi.stubGlobal("fetch", fetchMock);
   try {
-    await openDemo("/advisor");
+    await openDemo();
+    fireEvent.click(screen.getByRole("link", { name: /Market research/ }));
     fireEvent.click(
       await screen.findByRole("button", {
         name: /Which EU and Latvian packaging rules affect us/,
@@ -613,7 +615,7 @@ it("plans reorders from step 1 data with only stock counts typed in", async () =
   vi.setSystemTime(new Date("2026-11-19T12:00:00Z"));
   try {
     await openDemo();
-    fireEvent.click(screen.getByRole("link", { name: /When to reorder/ }));
+    fireEvent.click(screen.getByRole("link", { name: /Stock & orders/ }));
     expect(
       await screen.findByRole("region", { name: "Your data" }),
     ).toHaveTextContent("1,000 kg / month");
@@ -648,4 +650,71 @@ it("plans reorders from step 1 data with only stock counts typed in", async () =
   } finally {
     vi.useRealTimers();
   }
+});
+it("turns pasted survey answers into context for market research", async () => {
+  const fetchMock = vi.fn(
+    async () =>
+      new Response(JSON.stringify({ reply: "Offer 250 g.", sources: [] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+  );
+  vi.stubGlobal("fetch", fetchMock);
+  try {
+    await openDemo();
+    fireEvent.click(screen.getByRole("link", { name: /Customer survey/ }));
+    expect(await screen.findByTestId("survey-questions")).toHaveTextContent(
+      "Which pack size would you prefer for regular use?",
+    );
+    change(
+      "Paste your responses (copied from Google Sheets or Excel)",
+      "Timestamp\tPreferred size\n1\t250 g\n2\t250 g\n3\t1 kg",
+    );
+    expect(await screen.findByTestId("survey-results")).toHaveTextContent(
+      "3 responses",
+    );
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /Use these results in market research/,
+      }),
+    );
+    expect(await screen.findByTestId("survey-attached")).toHaveTextContent(
+      "Customer survey attached (3 responses)",
+    );
+    expect(await screen.findByTestId("research-costs")).toHaveTextContent(
+      "€286.00 a month",
+    );
+    change("Your question", "Which pack sizes should we offer?");
+    fireEvent.click(screen.getByRole("button", { name: "Ask the advisor" }));
+    await screen.findByText("Offer 250 g.");
+    const sent = JSON.parse(
+      String(
+        (fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body,
+      ),
+    );
+    expect(sent.context).toContain("- 250 g: 2 (67%)");
+  } finally {
+    sessionStorage.clear();
+    vi.unstubAllGlobals();
+  }
+});
+it("fills step 1 from a sales forecast pasted from Excel", async () => {
+  await openDemo("/forecast");
+  await screen.findByLabelText("Paste from Excel or Google Sheets");
+  change(
+    "Paste from Excel or Google Sheets",
+    "Month\t1 kg\t500 g\t250 g\n2026-08\t800\t300\t200\n2026-09\t850\t300\t200\n2026-10\t900\t300\t200",
+  );
+  expect(await screen.findByTestId("forecast-summary")).toHaveTextContent(
+    "Next month (2026-11): about 1,150 kg",
+  );
+  fireEvent.click(
+    screen.getByRole("button", { name: /Use next month's forecast in step 1/ }),
+  );
+  expect(
+    await screen.findByRole("heading", { name: "Your costs" }),
+  ).toBeInTheDocument();
+  expect(screen.getByRole("region", { name: "Your data" })).toHaveTextContent(
+    "1,150 kg / month",
+  );
 });

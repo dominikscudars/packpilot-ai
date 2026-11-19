@@ -182,7 +182,7 @@ export function DataEntry() {
     <>
       <header className="page-heading">
         <div>
-          <span className="eyebrow">STEP 1 OF 4</span>
+          <span className="eyebrow">STEP 1 OF 3</span>
           <h1>Enter your data</h1>
           <p>
             Fill in what you know about your packaging. Leave a field empty if
@@ -193,6 +193,12 @@ export function DataEntry() {
           </p>
         </div>
       </header>
+
+      <p className="notice import-hint">
+        Have your monthly sales in Excel? Use the{" "}
+        <Link to="/forecast">Sales forecast</Link> tool to paste them and fill
+        production and pack mix automatically.
+      </p>
 
       <div className="data-entry-actions">
         <button

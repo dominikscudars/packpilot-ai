@@ -8,7 +8,6 @@ import { useRequest, RequestState } from "../components/AsyncState";
 import { QuantityField as Q } from "../components/QuantityField";
 import { decimalText } from "../components/ApiResults";
 import { DataSummary } from "../components/DataSummary";
-import { NextStep } from "../components/NextStep";
 import { DEMO_REFERENCE_NAME } from "../demo/apiDemo";
 
 /** One packaging item whose monthly use follows from the step 1 data. */
@@ -204,8 +203,8 @@ export function Reorder() {
     <>
       <header className="page-heading">
         <div>
-          <span className="eyebrow">STEP 3 OF 4</span>
-          <h1>When to reorder</h1>
+          <span className="eyebrow">TOOL</span>
+          <h1>Stock &amp; orders</h1>
           <p>
             Count what you have on the shelf. PackPilot works out how fast you
             use bags, labels and boxes from your production in step 1 and tells
@@ -382,7 +381,6 @@ export function Reorder() {
           </div>
         )}
       </section>
-      <NextStep to="/advisor" label="get research and advice" />
     </>
   );
 }
