@@ -132,7 +132,7 @@ it("keeps alternative inputs separate and requires an explicit hourly wage", asy
   await waitFor(() =>
     expect(screen.getByTestId("operating-cost")).toHaveTextContent("€572.00"),
   );
-  expect(screen.getByText(/Production volumes differ/)).toBeInTheDocument();
+  expect(screen.getByText(/pack different amounts/)).toBeInTheDocument();
   fireEvent.click(screen.getByRole("link", { name: /Your costs/ }));
   expect(await screen.findByTestId("operating-cost")).toHaveTextContent(
     "€286.00",
@@ -495,7 +495,7 @@ it("invalidates demand confirmation when the compared scenario inputs change", a
   const confirmation = screen.getByRole("checkbox", {
     name: /same product and demand/,
   });
-  fireEvent.click(confirmation);
+  // An untouched copy of the current operation starts confirmed.
   expect(confirmation).toBeChecked();
   change("Monthly production (kg)", "2000");
   expect(confirmation).not.toBeChecked();
