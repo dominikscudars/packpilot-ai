@@ -163,6 +163,7 @@ describe("advisor HTTP handler", () => {
     expect((await r.json()).reply).toBe("Answer from the backup model.");
     expect(generateContent.mock.calls.map((c) => c[0].model)).toEqual([
       DEFAULT_GEMINI_MODEL,
+      "backup-model",
     ]);
   });
   it("shows Gemini's own error message when every model fails", async () => {
