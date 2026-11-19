@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
+import { ApiError } from "@google/genai";
 import { createDemoScenario } from "../../backend/src/domain/demo";
 import {
+  DEFAULT_FALLBACK_MODEL,
   DEFAULT_GEMINI_MODEL,
   type GeminiModels,
   applyEvaluation,
@@ -146,5 +148,48 @@ describe("advisor HTTP handler", () => {
       generateContent.mock.calls[1][0].contents[2].parts[0].functionResponse
         .response;
     expect(response.error).toMatch(/Unknown formatId/);
+  });
+  it("falls back to the backup model when the main one is overloaded", async () => {
+    const generateContent = vi
+      .fn()
+      .mockRejectedValueOnce(
+        new ApiError({ message: "The model is overloaded.", status: 503 }),
+      )
+      .mockResolvedValueOnce({ text: "Answer from the backup model." });
+    const r = await handleAdvisorRequest(post(ask()), {
+      apiKey: undefined,
+      client: { models: { generateContent } },
+    });
+    expect((await r.json()).reply).toBe("Answer from the backup model.");
+    expect(generateContent.mock.calls.map((c) => c[0].model)).toEqual([
+      DEFAULT_GEMINI_MODEL,
+      DEFAULT_FALLBACK_MODEL,
+    ]);
+  });
+  it("shows Gemini's own error message when every model fails", async () => {
+    const generateContent = vi
+      .fn()
+      .mockRejectedValue(
+        new ApiError({ message: "The model is overloaded.", status: 503 }),
+      );
+    const r = await handleAdvisorRequest(post(ask()), {
+      apiKey: undefined,
+      client: { models: { generateContent } },
+    });
+    expect(r.status).toBe(502);
+    expect((await r.json()).error).toMatch(/unavailable.*overloaded/);
+  });
+  it("does not retry another model when the key is rejected", async () => {
+    const generateContent = vi
+      .fn()
+      .mockRejectedValue(
+        new ApiError({ message: "API key not valid.", status: 400 }),
+      );
+    const r = await handleAdvisorRequest(post(ask()), {
+      apiKey: undefined,
+      client: { models: { generateContent } },
+    });
+    expect((await r.json()).error).toMatch(/key was rejected/);
+    expect(generateContent).toHaveBeenCalledTimes(1);
   });
 });

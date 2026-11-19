@@ -8,5 +8,6 @@ export function POST(request: Request): Promise<Response> {
   return handleAdvisorRequest(request, {
     apiKey: process.env.GEMINI_API_KEY,
     model: process.env.GEMINI_MODEL,
+    fallbackModel: process.env.GEMINI_FALLBACK_MODEL,
   });
 }
