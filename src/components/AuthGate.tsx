@@ -261,8 +261,8 @@ export function AuthGate({
           </form>
         ) : (
           <p className="notice">
-            Company sign-in is not configured. Set the frontend Supabase
-            environment variables to enable it.
+            Company accounts are not enabled on this demo site yet. Use{" "}
+            <strong>Open local demo</strong> below to try PackPilot.
           </p>
         )}
         <hr />
