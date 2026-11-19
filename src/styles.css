@@ -2004,3 +2004,15 @@ nav + .nav-label {
     break-inside: avoid;
   }
 }
+.answer-basis {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.advisor-busy {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin: 12px 0;
+}

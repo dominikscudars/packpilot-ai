@@ -1,5 +1,3 @@
-import type { AdvisorReply } from "./server";
-
 /**
  * Research answers prepared by hand for OG TOFU's own questions (interview,
  * November 2026), shown in the advisor without calling the AI service.
@@ -10,7 +8,7 @@ import type { AdvisorReply } from "./server";
 export interface PreparedAnswer {
   question: string;
   answer: string;
-  sources: AdvisorReply["sources"];
+  sources: { url: string; title: string }[];
 }
 
 export const PREPARED_DATE = "19 November 2026";

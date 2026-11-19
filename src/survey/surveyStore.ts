@@ -1,13 +1,16 @@
-/** Survey results handed from the survey tool to market research (this tab only). */
+/**
+ * Survey results handed from the survey tool to market research: this tab
+ * only, and scoped to one workspace so another company never sees them.
+ */
 export interface SurveySummary {
   responses: number;
   text: string;
 }
-const KEY = "packpilot.survey.v1";
+const KEY = (scope: string) => `packpilot.survey.v1:${scope}`;
 
-export function loadSurvey(): SurveySummary | null {
+export function loadSurvey(scope: string): SurveySummary | null {
   try {
-    const raw = sessionStorage.getItem(KEY);
+    const raw = sessionStorage.getItem(KEY(scope));
     if (!raw) return null;
     const value = JSON.parse(raw) as SurveySummary;
     return typeof value.text === "string" && typeof value.responses === "number"
@@ -17,17 +20,17 @@ export function loadSurvey(): SurveySummary | null {
     return null;
   }
 }
-export function saveSurvey(value: SurveySummary): boolean {
+export function saveSurvey(scope: string, value: SurveySummary): boolean {
   try {
-    sessionStorage.setItem(KEY, JSON.stringify(value));
+    sessionStorage.setItem(KEY(scope), JSON.stringify(value));
     return true;
   } catch {
     return false;
   }
 }
-export function clearSurvey() {
+export function clearSurvey(scope: string) {
   try {
-    sessionStorage.removeItem(KEY);
+    sessionStorage.removeItem(KEY(scope));
   } catch {
     // Storage blocked: nothing was stored.
   }

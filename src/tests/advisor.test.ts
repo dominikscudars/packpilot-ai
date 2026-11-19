@@ -109,9 +109,15 @@ describe("advisor HTTP handler", () => {
       client,
     });
     expect(r.status).toBe(200);
-    expect(await r.json()).toEqual({
+    expect(await r.json()).toMatchObject({
       reply: "Buy the bigger chamber.",
       sources: [],
+      basis: {
+        model: DEFAULT_GEMINI_MODEL,
+        engineCalls: 1,
+        researchCalls: 0,
+        surveyAttached: false,
+      },
     });
     const first = generateContent.mock.calls[0][0];
     expect(first.model).toBe(DEFAULT_GEMINI_MODEL);
@@ -219,9 +225,17 @@ describe("advisor HTTP handler", () => {
       apiKey: undefined,
       client: { models: { generateContent } },
     });
-    expect(await r.json()).toEqual({
+    expect(await r.json()).toMatchObject({
       reply: "## Recommendation\nPrepare now.",
-      sources: [{ url: "https://eur-lex.europa.eu/x", title: "EUR-Lex" }],
+      sources: [
+        {
+          url: "https://eur-lex.europa.eu/x",
+          title: "EUR-Lex",
+          kind: "web",
+          query: "EU PPWR 2030",
+        },
+      ],
+      basis: { researchCalls: 1, engineCalls: 0 },
     });
     const researchCall = generateContent.mock.calls[1][0];
     expect(researchCall.config.tools).toEqual([{ googleSearch: {} }]);
@@ -229,7 +243,11 @@ describe("advisor HTTP handler", () => {
     const back =
       generateContent.mock.calls[2][0].contents[2].parts[0].functionResponse
         .response;
-    expect(back.output.findings).toBe("PPWR applies from 12 August 2026.");
+    // Web findings come back delimited and labelled as untrusted data.
+    expect(back.output.findings).toBe(
+      "<research_findings>\nPPWR applies from 12 August 2026.\n</research_findings>",
+    );
+    expect(back.output.note).toMatch(/Untrusted web content/);
   });
   it("caps web research per question", async () => {
     const call = (n: number) => ({
