@@ -6,6 +6,7 @@ import { useRequest, RequestState } from "../components/AsyncState";
 import { ApiResults } from "../components/ApiResults";
 import { ScenarioPanel } from "../components/ScenarioPanel";
 import { NextStep } from "../components/NextStep";
+import { DataSummary } from "../components/DataSummary";
 export function Dashboard() {
   const { baseline, setBaseline, gateway, mode } = useWorkspace();
   const state = useRequest(JSON.stringify(baseline.input), () =>
@@ -18,7 +19,7 @@ export function Dashboard() {
     <>
       <header className="page-heading">
         <div>
-          <span className="eyebrow">STEP 2 OF 3</span>
+          <span className="eyebrow">STEP 2 OF 4</span>
           <h1>Your costs</h1>
           <p>
             {mode === "demo"
@@ -30,6 +31,7 @@ export function Dashboard() {
           <Icon name="spark" /> Get research &amp; advice <Icon name="arrow" />
         </Link>
       </header>
+      <DataSummary input={baseline.input} />
       <RequestState
         error={state.error}
         onRetry={state.retry}
@@ -42,7 +44,7 @@ export function Dashboard() {
         draft={baseline}
         onChange={setBaseline}
       />
-      <NextStep to="/advisor" label="get research and advice" />
+      <NextStep to="/reorder" label="see when to reorder" />
     </>
   );
 }

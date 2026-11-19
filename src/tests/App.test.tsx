@@ -608,3 +608,44 @@ it("shows prepared OG TOFU research without calling the AI, and keeps it out of 
     vi.unstubAllGlobals();
   }
 });
+it("plans reorders from step 1 data with only stock counts typed in", async () => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-11-19T12:00:00Z"));
+  try {
+    await openDemo();
+    fireEvent.click(screen.getByRole("link", { name: /When to reorder/ }));
+    expect(
+      await screen.findByRole("region", { name: "Your data" }),
+    ).toHaveTextContent("1,000 kg / month");
+    expect(await screen.findByTestId("use-labels")).toHaveTextContent(
+      "You use about 1,300 a month (from step 1).",
+    );
+    change("250 g bags in stock", "100");
+    change("1000 g bags in stock", "2000");
+    expect(
+      await screen.findByText(
+        /enough for about 15 days\. Order 241 by 19 Nov 2026\./,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("plan-bag-format-3")).toHaveTextContent(
+      "Order now",
+    );
+    expect(screen.getByTestId("plan-bag-format-1")).toHaveTextContent(
+      /OK for now.*enough for about 75 days\. Order 800 by 11 Jan 2027\./,
+    );
+    expect(screen.getByTestId("order-list")).toHaveTextContent(
+      "250 g bags: 241 (order by 19 Nov 2026)",
+    );
+    expect(screen.getByTestId("order-list")).not.toHaveTextContent("1000 g");
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Use 12 – OG TOFU for Kg of product per transport box",
+      }),
+    );
+    expect(screen.getByTestId("use-boxes")).toHaveTextContent(
+      "You use about 84 a month",
+    );
+  } finally {
+    vi.useRealTimers();
+  }
+});

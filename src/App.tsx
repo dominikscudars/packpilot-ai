@@ -9,6 +9,7 @@ import { Dashboard } from "./pages/Dashboard";
 import { CompanyProfile } from "./pages/CompanyProfile";
 import { DataEntry } from "./pages/DataEntry";
 import { Advisor } from "./pages/Advisor";
+import { Reorder } from "./pages/Reorder";
 function Shell() {
   const { company, mode } = useWorkspace();
   return (
@@ -40,9 +41,10 @@ function Shell() {
             [
               { path: "/data", name: "1. Enter your data", icon: "form" },
               { path: "/", name: "2. Your costs", icon: "overview" },
+              { path: "/reorder", name: "3. When to reorder", icon: "box" },
               {
                 path: "/advisor",
-                name: "3. Research & advice",
+                name: "4. Research & advice",
                 icon: "spark",
               },
               { path: "/company", name: "Company profile", icon: "company" },
@@ -85,7 +87,11 @@ function Shell() {
             <Route path="/advisor" element={<Advisor />} />
             <Route path="/company" element={<CompanyProfile />} />
             <Route path="/simulator" element={<Navigate to="/" replace />} />
-            <Route path="/inventory" element={<Navigate to="/" replace />} />
+            <Route path="/reorder" element={<Reorder />} />
+            <Route
+              path="/inventory"
+              element={<Navigate to="/reorder" replace />}
+            />
             <Route
               path="*"
               element={

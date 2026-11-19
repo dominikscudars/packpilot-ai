@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useWorkspace } from "../components/WorkspaceProvider";
 import type { AdvisorReply } from "../advisor/server";
 import { ReportText } from "../components/ReportText";
+import { DataSummary } from "../components/DataSummary";
 import {
   PREPARED_ANSWERS,
   PREPARED_DATE,
@@ -91,7 +92,7 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
     <>
       <header className="page-heading">
         <div>
-          <span className="eyebrow">STEP 3 OF 3</span>
+          <span className="eyebrow">STEP 4 OF 4</span>
           <h1>Research &amp; advice</h1>
           <p>
             Ask about machinery, packaging materials, suppliers or EU and
@@ -102,6 +103,8 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
           </p>
         </div>
       </header>
+
+      <DataSummary input={baseline.input} />
 
       <section className="panel prepared-panel">
         <h2>Prepared research for OG TOFU</h2>
