@@ -123,29 +123,6 @@ it("hides old results immediately when production becomes missing or invalid", a
   change("Monthly production (kg)", "-1");
   expect(await screen.findByRole("alert")).toHaveTextContent(/non-negative/);
 });
-it("keeps alternative inputs separate and requires an explicit hourly wage", async () => {
-  await openDemo("/simulator");
-  await enterOgData();
-  fireEvent.click(screen.getByRole("link", { name: /Compare scenarios/ }));
-  await screen.findByLabelText("Monthly production (kg)");
-  change("Monthly production (kg)", "2000");
-  await waitFor(() =>
-    expect(screen.getByTestId("operating-cost")).toHaveTextContent("€572.00"),
-  );
-  expect(screen.getByText(/pack different amounts/)).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("link", { name: /Your costs/ }));
-  expect(await screen.findByTestId("operating-cost")).toHaveTextContent(
-    "€286.00",
-  );
-  change("Labor pricing method", "hourly");
-  await waitFor(() =>
-    expect(screen.getByTestId("operating-cost")).toHaveTextContent("Unknown"),
-  );
-  change("Labor (€/person-hour)", "12");
-  await waitFor(() =>
-    expect(screen.getByTestId("operating-cost")).toHaveTextContent("€242.67"),
-  );
-});
 it("saves company and product changes explicitly", async () => {
   await openDemo("/company");
   await screen.findByLabelText("Company name");
@@ -162,40 +139,6 @@ it("saves company and product changes explicitly", async () => {
   expect(
     JSON.parse(localStorage.getItem(DEMO_KEY)!).catalog.products[0].name,
   ).toBe("Edited tofu");
-});
-it("calculates inventory, distinguishes unknown orders, and saves stock without inventing forecast inputs", async () => {
-  await openDemo("/inventory");
-  await screen.findByLabelText("Current stock (packages)");
-  expect(
-    screen.getByLabelText("Expected monthly consumption (packages)"),
-  ).toHaveValue("");
-  for (const [label, value] of [
-    ["Current stock (packages)", "100"],
-    ["Expected monthly consumption (packages)", "300"],
-    ["Calendar days in planning month", "30"],
-    ["Working days in planning month", "20"],
-    ["Supplier lead time (calendar days)", "10"],
-    ["Minimum order (packages)", "50"],
-    ["Safety stock (packages)", "20"],
-    ["Review period (calendar days)", "5"],
-  ])
-    change(label, value);
-  await waitFor(() =>
-    expect(screen.getByTestId("reorder-point")).toHaveTextContent(
-      "120 packages",
-    ),
-  );
-  expect(screen.getByTestId("suggested-order")).toHaveTextContent("Unknown");
-  change("Outstanding purchase orders", "none");
-  await waitFor(() =>
-    expect(screen.getByTestId("suggested-order")).toHaveTextContent(
-      "70 packages",
-    ),
-  );
-  fireEvent.click(
-    screen.getByRole("button", { name: "Save inventory record" }),
-  );
-  await screen.findByText(/Stock, lead time, MOQ and safety stock saved/);
 });
 it("signs in, uses bearer tokens and API results, and never uploads legacy browser profiles", async () => {
   localStorage.setItem(
@@ -489,17 +432,6 @@ it("keeps a rejected profile draft visible without claiming it was saved", async
   expect(screen.getByLabelText("Company name")).toHaveValue("Unsaved edit");
   expect(screen.queryByText("Company profile saved.")).toBeNull();
 });
-it("invalidates demand confirmation when the compared scenario inputs change", async () => {
-  await openDemo("/simulator");
-  await screen.findByLabelText("Monthly production (kg)");
-  const confirmation = screen.getByRole("checkbox", {
-    name: /same product and demand/,
-  });
-  // An untouched copy of the current operation starts confirmed.
-  expect(confirmation).toBeChecked();
-  change("Monthly production (kg)", "2000");
-  expect(confirmation).not.toBeChecked();
-});
 it("does not let a save from an unmounted editor overwrite a newer draft", async () => {
   const { auth } = authFixture(),
     { fetcher } = apiFixture();
@@ -538,47 +470,6 @@ it("does not let a save from an unmounted editor overwrite a newer draft", async
       "3000",
     ),
   );
-});
-it("keeps copied current inputs when an earlier alternative save completes", async () => {
-  const { auth } = authFixture(),
-    { fetcher } = apiFixture();
-  const normal = fetcher.getMockImplementation()!;
-  let release!: () => void;
-  const delayed = new Promise<void>((resolve) => {
-    release = resolve;
-  });
-  fetcher.mockImplementation(async (url, init) => {
-    if (init?.method === "POST" && String(url).endsWith("/scenarios"))
-      await delayed;
-    return normal(url, init);
-  });
-  mount("/simulator", {
-    auth,
-    apiUrl: "http://localhost:3001",
-    error: null,
-    fetcher,
-  });
-  await screen.findByLabelText("Monthly production (kg)");
-  change("Monthly production (kg)", "2000");
-  fireEvent.click(screen.getByRole("button", { name: "Save as new scenario" }));
-  await waitFor(() =>
-    expect(
-      fetcher.mock.calls.some(
-        ([url, init]) =>
-          String(url).endsWith("/scenarios") && init?.method === "POST",
-      ),
-    ).toBe(true),
-  );
-  fireEvent.click(screen.getByRole("button", { name: "Copy current inputs" }));
-  await act(async () => {
-    release();
-    await delayed;
-  });
-  await waitFor(() =>
-    expect(screen.getByLabelText("Monthly production (kg)")).toBeEnabled(),
-  );
-  expect(screen.getByLabelText("Monthly production (kg)")).toHaveValue("1000");
-  expect(screen.queryByText("Scenario saved to your company.")).toBeNull();
 });
 it("starts step 1 empty, offers OG TOFU values and saves the company's own data", async () => {
   const view = await openDemo("/data");

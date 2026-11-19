@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useWorkspace } from "../components/WorkspaceProvider";
 import type { AdvisorReply } from "../advisor/server";
+import { ReportText } from "../components/ReportText";
 
 interface Turn {
   role: "user" | "assistant";
@@ -10,8 +11,9 @@ interface Turn {
 }
 
 const STARTERS = [
-  "We want to grow from 1 to 10 tonnes a month. What should we upgrade, and when?",
-  "Is a faster packing machine worth it for us? Compare a few options.",
+  "Which EU packaging laws affect us, what changes by 2030, and what should we do now?",
+  "We want to grow from 1 to 10 tonnes a month. Which packing machines should we consider, and what do they cost?",
+  "Are there recyclable mono-material vacuum bags that keep fresh tofu for 10 days? Compare materials and suppliers.",
   "How can we make 250 g and 500 g packs cheaper per kilogram?",
 ];
 
@@ -68,13 +70,14 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
     <>
       <header className="page-heading">
         <div>
-          <span className="eyebrow">STEP 5 OF 5</span>
-          <h1>Upgrade advisor</h1>
+          <span className="eyebrow">STEP 3 OF 3</span>
+          <h1>Research &amp; advice</h1>
           <p>
-            Ask how to upgrade your packaging. The advisor tests each idea with
-            PackPilot's calculations on your current operation ({baseline.name})
-            and suggests what to ask suppliers. Change the numbers it starts
-            from in <Link to="/data">Enter your data</Link>.
+            Ask about machinery, packaging materials, suppliers or EU and
+            Latvian packaging rules. The advisor researches the web, cites its
+            sources and tests every option with PackPilot's calculations on your
+            operation ({baseline.name}). Change those numbers in{" "}
+            <Link to="/data">step 1</Link>.
           </p>
         </div>
       </header>
@@ -103,7 +106,11 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
             data-testid={`advisor-${turn.role}`}
           >
             <strong>{turn.role === "user" ? "You" : "Advisor"}</strong>
-            <div className="advisor-text">{turn.content}</div>
+            {turn.role === "assistant" ? (
+              <ReportText text={turn.content} />
+            ) : (
+              <div className="advisor-text">{turn.content}</div>
+            )}
             {turn.sources && turn.sources.length > 0 && (
               <div className="advisor-sources">
                 <span className="muted">Sources (external, unverified):</span>
@@ -122,8 +129,8 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
         ))}
         {busy && (
           <p className="muted" role="status">
-            The advisor is testing options with PackPilot's calculations. This
-            usually takes 20–60 seconds…
+            Researching and testing options with PackPilot's calculations. A
+            full research answer can take one to three minutes…
           </p>
         )}
         {error && (

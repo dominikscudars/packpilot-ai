@@ -200,9 +200,8 @@ export function CompanyProfile() {
       <section className="panel">
         <h2>Packaging catalog</h2>
         <p className="muted">
-          Scenario inputs are editable on Overview and Simulator. Saved
-          scenarios keep snapshots; catalog changes do not silently rewrite
-          them.
+          Your operation is edited in step 1, Enter your data. Saved scenarios
+          keep snapshots; catalog changes do not silently rewrite them.
         </p>
         <div className="table-scroll">
           <table>

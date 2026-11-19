@@ -18,7 +18,7 @@ export function Dashboard() {
     <>
       <header className="page-heading">
         <div>
-          <span className="eyebrow">STEP 2 OF 5</span>
+          <span className="eyebrow">STEP 2 OF 3</span>
           <h1>Your costs</h1>
           <p>
             {mode === "demo"
@@ -26,8 +26,8 @@ export function Dashboard() {
               : "Review costs and production for your selected company."}
           </p>
         </div>
-        <Link to="/simulator" className="button">
-          <Icon name="simulator" /> Explore scenarios <Icon name="arrow" />
+        <Link to="/advisor" className="button">
+          <Icon name="spark" /> Get research &amp; advice <Icon name="arrow" />
         </Link>
       </header>
       <RequestState
@@ -41,7 +41,7 @@ export function Dashboard() {
         draft={baseline}
         onChange={setBaseline}
       />
-      <NextStep to="/simulator" label="compare scenarios" />
+      <NextStep to="/advisor" label="get research and advice" />
     </>
   );
 }
