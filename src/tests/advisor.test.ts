@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import type Anthropic from "@anthropic-ai/sdk";
 import { createDemoScenario } from "../../backend/src/domain/demo";
 import {
-  ADVISOR_MODEL,
+  DEFAULT_GEMINI_MODEL,
+  type GeminiModels,
   applyEvaluation,
   evaluate,
   handleAdvisorRequest,
@@ -63,7 +63,7 @@ describe("advisor HTTP handler", () => {
   it("explains a missing API key instead of failing silently", async () => {
     const r = await handleAdvisorRequest(post(ask()), { apiKey: undefined });
     expect(r.status).toBe(503);
-    expect((await r.json()).error).toMatch(/ANTHROPIC_API_KEY/);
+    expect((await r.json()).error).toMatch(/GEMINI_API_KEY/);
   });
   it("validates the conversation", async () => {
     const r = await handleAdvisorRequest(
@@ -72,39 +72,37 @@ describe("advisor HTTP handler", () => {
     );
     expect(r.status).toBe(400);
   });
-  it("lets Claude call the engine tool and returns its answer with sources", async () => {
-    let toolOutput = "";
-    let params: Record<string, unknown> = {};
-    const toolRunner = vi.fn(async (p: Record<string, unknown>) => {
-      params = p;
-      const tools = p.tools as {
-        name: string;
-        run?: (a: unknown) => unknown;
-      }[];
-      const tool = tools.find((t) => t.name === "evaluate_scenario");
-      toolOutput = String(
-        await tool?.run?.({ label: "Faster", machine: { packsPerCycle: 4 } }),
-      );
-      return {
-        stop_reason: "end_turn",
-        content: [
+  it("lets Gemini call the engine tool and returns its final answer", async () => {
+    const generateContent = vi.fn();
+    generateContent
+      .mockResolvedValueOnce({
+        functionCalls: [
           {
-            type: "text",
-            text: "Buy the bigger chamber.",
-            citations: [
-              {
-                type: "web_search_result_location",
-                url: "https://example.com/m",
-                title: "Machine page",
-              },
-            ],
+            id: "c1",
+            name: "evaluate_scenario",
+            args: { label: "Faster", machine: { packsPerCycle: 4 } },
           },
         ],
-      };
-    });
-    const client = {
-      beta: { messages: { toolRunner } },
-    } as unknown as Anthropic;
+        candidates: [
+          {
+            content: {
+              role: "model",
+              parts: [
+                {
+                  functionCall: {
+                    id: "c1",
+                    name: "evaluate_scenario",
+                    args: { label: "Faster", machine: { packsPerCycle: 4 } },
+                  },
+                  thoughtSignature: "sig",
+                },
+              ],
+            },
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ text: "Buy the bigger chamber." });
+    const client: GeminiModels = { models: { generateContent } };
     const r = await handleAdvisorRequest(post(ask()), {
       apiKey: undefined,
       client,
@@ -112,11 +110,41 @@ describe("advisor HTTP handler", () => {
     expect(r.status).toBe(200);
     expect(await r.json()).toEqual({
       reply: "Buy the bigger chamber.",
-      sources: [{ url: "https://example.com/m", title: "Machine page" }],
+      sources: [],
     });
-    expect(JSON.parse(toolOutput).alternative.totalPackages).toBe(1300);
-    expect(params.model).toBe(ADVISOR_MODEL);
-    expect(params.fallbacks).toBe("default");
-    expect(JSON.stringify(params.messages)).toContain("og-format-1kg");
+    const first = generateContent.mock.calls[0][0];
+    expect(first.model).toBe(DEFAULT_GEMINI_MODEL);
+    expect(JSON.stringify(first.contents)).toContain("og-format-1kg");
+    const second = generateContent.mock.calls[1][0];
+    // The model turn is sent back unchanged, including its thought signature.
+    expect(second.contents[1].parts[0].thoughtSignature).toBe("sig");
+    const result = second.contents[2].parts[0].functionResponse;
+    expect(result).toMatchObject({ id: "c1", name: "evaluate_scenario" });
+    expect(result.response.output.alternative.totalPackages).toBe(1300);
+  });
+  it("returns tool errors to the model instead of crashing", async () => {
+    const generateContent = vi
+      .fn()
+      .mockResolvedValueOnce({
+        functionCalls: [
+          {
+            name: "evaluate_scenario",
+            args: {
+              label: "Bad",
+              formats: [{ formatId: "nope", sharePercent: 1 }],
+            },
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ text: "That pack size does not exist." });
+    const r = await handleAdvisorRequest(post(ask()), {
+      apiKey: undefined,
+      client: { models: { generateContent } },
+    });
+    expect(r.status).toBe(200);
+    const response =
+      generateContent.mock.calls[1][0].contents[2].parts[0].functionResponse
+        .response;
+    expect(response.error).toMatch(/Unknown formatId/);
   });
 });
