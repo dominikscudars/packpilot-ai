@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 import { ApiError } from "@google/genai";
 import { createDemoScenario } from "../../backend/src/domain/demo";
 import {
-  DEFAULT_FALLBACK_MODEL,
   DEFAULT_GEMINI_MODEL,
   type GeminiModels,
   applyEvaluation,
@@ -158,12 +157,12 @@ describe("advisor HTTP handler", () => {
       .mockResolvedValueOnce({ text: "Answer from the backup model." });
     const r = await handleAdvisorRequest(post(ask()), {
       apiKey: undefined,
+      fallbackModel: "backup-model",
       client: { models: { generateContent } },
     });
     expect((await r.json()).reply).toBe("Answer from the backup model.");
     expect(generateContent.mock.calls.map((c) => c[0].model)).toEqual([
       DEFAULT_GEMINI_MODEL,
-      DEFAULT_FALLBACK_MODEL,
     ]);
   });
   it("shows Gemini's own error message when every model fails", async () => {
