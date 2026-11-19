@@ -1,0 +1,58 @@
+{
+  "name": "packpilot-ai",
+  "version": "0.1.0",
+  "description": "Deterministic packaging cost planning for food manufacturers",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc -b && vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "preview": "vite preview --host 0.0.0.0",
+    "format": "prettier --write src",
+    "format:check": "prettier --check src",
+    "test:integration": "node --import ./backend/node_modules/tsx/dist/loader.mjs --test scripts/frontend-api.integration.test.mjs",
+    "test:staging": "node --import ./backend/node_modules/tsx/dist/loader.mjs --test scripts/staging.integration.test.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dominikscudars/packpilot-ai.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "UNLICENSED",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/dominikscudars/packpilot-ai/issues"
+  },
+  "homepage": "https://github.com/dominikscudars/packpilot-ai#readme",
+  "private": true,
+  "dependencies": {
+    "@supabase/supabase-js": "^2.119.0",
+    "decimal.js": "^10.6.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-router-dom": "^7.18.5",
+    "recharts": "^3.10.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.5",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.12",
+    "@types/node": "^26.6.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "jsdom": "^31.0.1",
+    "prettier": "^3.10.1",
+    "tailwindcss": "^4.3.5",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.0"
+  },
+  "engines": {
+    "node": ">=24 <25"
+  }
+}

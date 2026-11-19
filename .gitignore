@@ -155,3 +155,12 @@ vite.config.ts.timestamp-*
 .nx/cache
 .nx/workspace-data
 .nx/migrate-runs
+
+# Backend local databases and journals
+backend/**/*.db
+backend/**/*.db-*
+backend/**/*.sqlite
+backend/**/*.sqlite-*
+
+# Local development authentication keys (never commit private or public fixtures)
+backend/.auth/

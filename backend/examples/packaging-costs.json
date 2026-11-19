@@ -1,0 +1,122 @@
+{
+  "monthlyProductionKg": {
+    "value": "1000",
+    "quality": "reported",
+    "sourceNote": "OG TOFU reported approximate monthly production."
+  },
+  "formats": [
+    {
+      "id": "og-format-1kg",
+      "portionWeightGrams": {
+        "value": "1000",
+        "quality": "reported",
+        "sourceNote": "Format size from the pilot brief; commercial use not confirmed."
+      },
+      "allocationPercent": {
+        "value": "80",
+        "quality": "assumption",
+        "sourceNote": "Illustrative weight mix, not verified sales or demand."
+      },
+      "materialCost": {
+        "method": "combined",
+        "combinedEuroPerPackage": {
+          "value": "0.07",
+          "quality": "assumption",
+          "sourceNote": "Illustrative combined packaging + label estimate; split not reported."
+        }
+      },
+      "machineId": "og-hurakan"
+    },
+    {
+      "id": "og-format-500g",
+      "portionWeightGrams": {
+        "value": "500",
+        "quality": "reported",
+        "sourceNote": "Format size from the pilot brief; commercial use not confirmed."
+      },
+      "allocationPercent": {
+        "value": "15",
+        "quality": "assumption",
+        "sourceNote": "Illustrative weight mix, not verified sales or demand."
+      },
+      "materialCost": {
+        "method": "combined",
+        "combinedEuroPerPackage": {
+          "value": "0.07",
+          "quality": "assumption",
+          "sourceNote": "Illustrative combined packaging + label estimate; split not reported."
+        }
+      },
+      "machineId": "og-hurakan"
+    },
+    {
+      "id": "og-format-250g",
+      "portionWeightGrams": {
+        "value": "250",
+        "quality": "reported",
+        "sourceNote": "Format size from the pilot brief; commercial use not confirmed."
+      },
+      "allocationPercent": {
+        "value": "5",
+        "quality": "assumption",
+        "sourceNote": "Illustrative weight mix, not verified sales or demand."
+      },
+      "materialCost": {
+        "method": "combined",
+        "combinedEuroPerPackage": {
+          "value": "0.07",
+          "quality": "assumption",
+          "sourceNote": "Illustrative combined packaging + label estimate; split not reported."
+        }
+      },
+      "machineId": "og-hurakan"
+    }
+  ],
+  "machines": [
+    {
+      "id": "og-hurakan",
+      "throughput": {
+        "method": "cycle",
+        "packagesPerCycle": {
+          "value": "2",
+          "quality": "reported",
+          "sourceNote": "Approximately two packages per cycle."
+        },
+        "cycleSeconds": {
+          "value": "70",
+          "quality": "reported",
+          "sourceNote": "Approximately 70 seconds per cycle."
+        }
+      },
+      "operators": {
+        "value": "1",
+        "quality": "assumption",
+        "sourceNote": "One continuously occupied operator; validate with observation."
+      },
+      "investmentEuro": {
+        "value": null,
+        "quality": "missing"
+      },
+      "maintenanceEuroPerMonth": {
+        "value": null,
+        "quality": "missing"
+      },
+      "availableHoursPerMonth": {
+        "value": null,
+        "quality": "missing"
+      }
+    }
+  ],
+  "labor": {
+    "method": "perPackage",
+    "euroPerPackage": {
+      "value": "0.15",
+      "quality": "reported",
+      "sourceNote": "Approximate packaging labor cost per package."
+    }
+  },
+  "additionalOperatingEuroPerMonth": {
+    "value": null,
+    "quality": "missing"
+  }
+}

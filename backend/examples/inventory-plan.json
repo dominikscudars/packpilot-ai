@@ -1,0 +1,44 @@
+{
+  "currentStockPackages": {
+    "value": "1500",
+    "quality": "assumption",
+    "sourceNote": "Synthetic documentation example; not verified OG TOFU data."
+  },
+  "expectedMonthlyConsumptionPackages": {
+    "value": "3000",
+    "quality": "assumption",
+    "sourceNote": "Synthetic documentation example; not verified OG TOFU data."
+  },
+  "calendarDaysInPlanningMonth": {
+    "value": "30",
+    "quality": "assumption",
+    "sourceNote": "Synthetic documentation example; not verified OG TOFU data."
+  },
+  "workingDaysInPlanningMonth": {
+    "value": "20",
+    "quality": "assumption",
+    "sourceNote": "Synthetic documentation example; not verified OG TOFU data."
+  },
+  "leadTimeCalendarDays": {
+    "value": "5",
+    "quality": "assumption",
+    "sourceNote": "Synthetic documentation example; not verified OG TOFU data."
+  },
+  "minimumOrderPackages": {
+    "value": "2000",
+    "quality": "assumption",
+    "sourceNote": "Synthetic documentation example; not verified OG TOFU data."
+  },
+  "safetyStockPackages": {
+    "value": "100",
+    "quality": "assumption",
+    "sourceNote": "Synthetic documentation example; not verified OG TOFU data."
+  },
+  "reviewPeriodCalendarDays": {
+    "value": "10",
+    "quality": "assumption",
+    "sourceNote": "Synthetic documentation example; not verified OG TOFU data."
+  },
+  "asOfDate": "2026-11-17",
+  "outstandingPurchaseOrders": []
+}
