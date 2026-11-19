@@ -785,9 +785,9 @@ tbody tr:hover {
 }
 .notice {
   display: block;
-  background: #f7f4ec;
-  border: 1px solid #eee5d1;
-  color: #7c6741;
+  background: #f4f7fc;
+  border: 1px solid #e1e8f3;
+  color: #3d4b63;
   font-size: 11px;
   padding: 13px 17px;
   border-radius: 9px;
@@ -797,6 +797,31 @@ tbody tr:hover {
 }
 .notice strong {
   font-weight: 650;
+}
+/* Setup guidance is calm; amber is reserved for real operational risks (stockout, over-capacity). */
+.notice.guidance {
+  border-left: 3px solid var(--blue);
+}
+.notice.guidance p,
+.notice.guidance ul {
+  margin: 0;
+}
+.notice.guidance ul {
+  padding-left: 18px;
+}
+.guidance-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--blue);
+  margin-bottom: 4px;
+}
+.notice.attention {
+  background: #fff7eb;
+  border-color: #f3dcb4;
+  color: #8a5a12;
 }
 .error {
   border: 1px solid #f2cfcf;

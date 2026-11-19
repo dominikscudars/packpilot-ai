@@ -491,6 +491,7 @@ export function DataEntry() {
         <h2>Your results</h2>
         <RequestState
           error={state.error}
+          guidance={state.guidance}
           loading={!state.data && !state.error}
         />
         {state.data && (

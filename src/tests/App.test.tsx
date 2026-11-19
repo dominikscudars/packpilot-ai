@@ -112,16 +112,23 @@ it("requires explicit demo entry, preserves exact reference results and persists
     "€572.00",
   );
 });
+/** Incomplete input shows the calm setup card, never the red error alert. */
+async function expectGuidance(text: RegExp) {
+  await waitFor(() =>
+    expect(screen.getByText(/setup guidance/i).parentElement).toHaveTextContent(
+      text,
+    ),
+  );
+  expect(screen.queryByRole("alert")).toBeNull();
+}
 it("hides old results immediately when production becomes missing or invalid", async () => {
   await openDemo();
   await screen.findByTestId("operating-cost");
   change("Monthly production (kg)", "");
   expect(screen.queryByTestId("operating-cost")).toBeNull();
-  expect(await screen.findByRole("alert")).toHaveTextContent(
-    /production.*required/i,
-  );
+  await expectGuidance(/add monthly production.*see your results/i);
   change("Monthly production (kg)", "-1");
-  expect(await screen.findByRole("alert")).toHaveTextContent(/non-negative/);
+  await expectGuidance(/non-negative/);
 });
 it("saves company and product changes explicitly", async () => {
   await openDemo("/company");
@@ -495,7 +502,7 @@ it("starts step 1 empty, offers OG TOFU values and saves the company's own data"
       .length,
   ).toBeGreaterThanOrEqual(2);
   fireEvent.click(screen.getByRole("button", { name: "Clear all fields" }));
-  expect(await screen.findByRole("alert")).toHaveTextContent(/required/i);
+  await expectGuidance(/see your results/i);
   change("How many kilograms do you produce per month?", "100");
   change("Pack weight (g) · pack size 1", "500");
   change("Share of production (%) · pack size 1", "100");
