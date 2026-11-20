@@ -401,15 +401,8 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
         </form>
       </section>
 
-
       <details className="card prepared" open={examplesOpen}>
-        <summary>
-          Example research for a sample company (OG TOFU) · no AI quota used
-        </summary>
-
-      <details className="card prepared">
         <summary>Example research for a sample company (OG TOFU)</summary>
-
         <p className="muted">
           Answers researched on {PREPARED_DATE} for OG TOFU, a Latvian tofu
           producer.
