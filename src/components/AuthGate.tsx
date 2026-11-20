@@ -203,12 +203,11 @@ export function AuthGate({
     <main className="auth-screen">
       <aside className="auth-story">
         <div className="brand">
-          <span className="brand-mark">
-            <Icon name="box" />
-          </span>
-          <span>
-            PackPilot<span className="brand-ai"> AI</span>
-          </span>
+          <img
+            className="brand-logo brand-logo-large"
+            src="/logo.svg"
+            alt="PackPilot AI"
+          />
         </div>
         <h2>
           Less guesswork.
