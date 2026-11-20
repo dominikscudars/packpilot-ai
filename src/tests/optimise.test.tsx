@@ -82,7 +82,9 @@ describe("optimise panel in the workspace", () => {
       "−€33.00 a month",
     );
     type("Production change", "100");
-    expect(screen.getByTestId("optimise")).toHaveTextContent("€572.00 a month");
+    expect(screen.getByTestId("projection-summary")).toHaveTextContent(
+      "€572 a month",
+    );
     expect(screen.getByTestId("option-mix")).toHaveTextContent(
       "−€66.00 a month",
     );

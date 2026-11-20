@@ -36,12 +36,12 @@ export function observations(
     const share = driver === "Labour" ? labourShare : 100 - labourShare;
     out.push({
       id: "driver",
-      text: `${driver} is the largest cost: ${share}% of your ${euro(Number(total))} a month (materials ${euro(Number(material))}, labour ${euro(Number(labour))}).`,
+      text: `${driver} is ${share}% of your monthly cost.`,
     });
   } else if (total === null) {
     out.push({
       id: "driver",
-      text: "Your monthly packaging cost is not complete yet; see “What is missing” below.",
+      text: "Some costs are still missing.",
     });
   }
   const perKg = result.rows
@@ -66,7 +66,7 @@ export function observations(
     const ratio = small.euroPerKg / large.euroPerKg;
     out.push({
       id: "small-packs",
-      text: `${sizeLabel(small.grams)} packs cost ${euro(small.euroPerKg)}/kg to pack, ${ratio.toFixed(1)}× the ${euro(large.euroPerKg)}/kg of ${sizeLabel(large.grams)} packs: each pack needs its own bag, label and handling time, so smaller packs spread these over fewer grams.`,
+      text: `${sizeLabel(small.grams)} packs cost ${ratio.toFixed(1)}× more per kg than ${sizeLabel(large.grams)} packs (${euro(small.euroPerKg)} vs ${euro(large.euroPerKg)}).`,
     });
   }
   const usage = result.machineUsage.find((m) => m.utilizationPercent !== null);
@@ -76,13 +76,8 @@ export function observations(
       id: "capacity",
       text:
         pct > 100
-          ? `Packing needs ${pct}% of the machine hours you have available: production above this level needs more hours or faster equipment.`
-          : `Packing uses about ${pct}% of the machine hours you have available.`,
-    });
-  } else if (result.machineHours !== null && Number(result.machineHours) > 0) {
-    out.push({
-      id: "capacity",
-      text: `Packing takes about ${Number(result.machineHours).toFixed(1)} machine-hours a month. Add the hours your machine is available to check how much capacity is left.`,
+          ? `Packing needs ${pct}% of your machine hours.`
+          : `Packing uses ${pct}% of your machine hours.`,
     });
   }
   return out.slice(0, 3);
@@ -111,7 +106,7 @@ export function completeness(input: ScenarioInput): MissingInput[] {
     if (unknown)
       out.push({
         decision: "Monthly cost and cost per kg",
-        needs: `Bag and label cost for pack size ${i + 1} (ask your supplier for a quote per pack).`,
+        needs: `Bag and label cost for pack size ${i + 1}`,
         field: fieldIds.material(i),
       });
   });
@@ -122,7 +117,7 @@ export function completeness(input: ScenarioInput): MissingInput[] {
   )
     out.push({
       decision: "Monthly cost and cost per kg",
-      needs: "Labour cost per pack or the hourly wage of the people packing.",
+      needs: "Labour cost",
       field: "labour",
     });
   const machine = input.machines.at(0);
@@ -135,20 +130,19 @@ export function completeness(input: ScenarioInput): MissingInput[] {
   if (timingUnknown)
     out.push({
       decision: "Packing hours and labour by the hour",
-      needs:
-        "Machine cycle time and packs per cycle (time one cycle with a stopwatch).",
+      needs: "Machine cycle time and packs per cycle",
       field: "equipment",
     });
   if (machine && machine.operators.value === null)
     out.push({
       decision: "Packing hours and labour by the hour",
-      needs: "Number of people operating the machine.",
+      needs: "Number of machine operators",
       field: "equipment",
     });
   if (machine && machine.availableHoursPerMonth.value === null)
     out.push({
       decision: "Capacity check as production grows",
-      needs: "Hours the machine is available per month.",
+      needs: "Machine hours available per month",
       field: "equipment",
     });
   if (
@@ -157,8 +151,7 @@ export function completeness(input: ScenarioInput): MissingInput[] {
   )
     out.push({
       decision: "Savings and payback when comparing equipment",
-      needs:
-        "Monthly maintenance and other recurring packaging costs (0 if none).",
+      needs: "Maintenance and other monthly costs (0 if none)",
       field: "other-costs",
     });
   return out;

@@ -57,7 +57,7 @@ export function ProductionSection(props: SectionProps) {
       <Q
         id={fieldIds.production}
         label="How many kilograms do you produce per month?"
-        hint="Total weight of product packed in a normal month, in kilograms (kg). 0 is allowed."
+        hint="Total kilograms packed in a normal month."
         value={input.monthlyProductionKg}
         error={errorFor(fieldIds.production)}
         onChange={(monthlyProductionKg) =>
@@ -66,11 +66,7 @@ export function ProductionSection(props: SectionProps) {
       />
       <div className="subsection-head">
         <h3>Pack sizes</h3>
-        <p>
-          Add every pack size you sell. The <strong>share</strong> is how much
-          of your monthly production, by weight, goes into that size. Shares
-          must add up to 100%.
-        </p>
+        <p>Share = % of your monthly kilograms in each size. Total 100%.</p>
       </div>
       <div className="pack-list">
         {input.formats.map((format, index) => (
@@ -79,7 +75,7 @@ export function ProductionSection(props: SectionProps) {
             <Q
               id={fieldIds.grams(index)}
               label={`Pack weight (g) · pack size ${index + 1}`}
-              hint="Product weight in one pack, in grams (1 kg = 1000 g)."
+
               value={format.portionWeightGrams}
               error={errorFor(fieldIds.grams(index))}
               onChange={(portionWeightGrams) =>
@@ -89,7 +85,7 @@ export function ProductionSection(props: SectionProps) {
             <Q
               id={fieldIds.share(index)}
               label={`Share of production (%) · pack size ${index + 1}`}
-              hint="Percent of monthly kilograms packed in this size."
+
               value={format.allocationPercent}
               error={errorFor(fieldIds.share(index))}
               onChange={(allocationPercent) =>
@@ -162,12 +158,7 @@ export function MaterialsSection(props: SectionProps) {
   const { input, errorFor } = props;
   return (
     <div className="form-section" id="costs">
-      <p className="section-intro">
-        What you pay your supplier for the packaging of{" "}
-        <strong>one pack</strong> in euro, for example €0.07. Leave a field
-        empty if you don't know it yet: that cost then shows as Unknown, never
-        as zero.
-      </p>
+      <p className="section-intro">Bag plus label, per pack, in euro.</p>
       {input.formats.map((format, index) => {
         const name = sizeLabel(format.portionWeightGrams.value);
         const cost = format.materialCost;
@@ -182,7 +173,7 @@ export function MaterialsSection(props: SectionProps) {
               <Q
                 id={fieldIds.material(index)}
                 label={`Bag and label cost (€ per pack) · pack size ${index + 1}`}
-                hint="Bag or pouch plus label, per pack."
+
                 value={cost.combinedEuroPerPackage}
                 error={errorFor(fieldIds.material(index))}
                 onChange={(combinedEuroPerPackage) =>
@@ -302,7 +293,7 @@ export function LabourSection(props: SectionProps) {
         {input.labor.method === "perPackage" ? (
           <Q
             label="Labour cost (€ per pack)"
-            hint="Wages for packing divided by the number of packs, in euro."
+
             value={input.labor.euroPerPackage}
             onChange={(euroPerPackage) =>
               change({
@@ -314,7 +305,7 @@ export function LabourSection(props: SectionProps) {
         ) : (
           <Q
             label="Hourly wage including taxes (€ per hour)"
-            hint="Cost of one person-hour of packing, including employer taxes."
+            hint="Including employer taxes."
             value={input.labor.euroPerPersonHour}
             onChange={(euroPerPersonHour) =>
               change({
@@ -327,14 +318,11 @@ export function LabourSection(props: SectionProps) {
       </div>
       <div className="form-section" id="equipment">
         <h3>Packing machine & capacity</h3>
-        <p className="section-intro">
-          Used to work out packing hours and how much more you could produce.
-          Time one machine cycle with a stopwatch if you are unsure.
-        </p>
+
         <div className="form-grid">
           <Q
             label="Seconds per machine cycle"
-            hint="From closing the lid to the next cycle, in seconds."
+            hint="Time one cycle with a stopwatch."
             value={cycle.cycleSeconds}
             onChange={(cycleSeconds) =>
               updateMachine(props, { throughput: { ...cycle, cycleSeconds } })
@@ -342,7 +330,7 @@ export function LabourSection(props: SectionProps) {
           />
           <Q
             label="Packs sealed per cycle"
-            hint="How many packs one cycle seals."
+
             value={cycle.packagesPerCycle}
             onChange={(packagesPerCycle) =>
               updateMachine(props, {
@@ -352,13 +340,13 @@ export function LabourSection(props: SectionProps) {
           />
           <Q
             label="People operating the machine"
-            hint="Number of people needed while it runs."
+
             value={machine.operators}
             onChange={(operators) => updateMachine(props, { operators })}
           />
           <Q
             label="Hours the machine is available per month"
-            hint="Packing hours you could use, e.g. 4 h × 21 days = 84."
+            hint="e.g. 4 h × 21 days = 84"
             value={machine.availableHoursPerMonth}
             onChange={(availableHoursPerMonth) =>
               updateMachine(props, { availableHoursPerMonth })
@@ -368,15 +356,11 @@ export function LabourSection(props: SectionProps) {
       </div>
       <div className="form-section" id="other-costs">
         <h3>Other costs (optional)</h3>
-        <p className="section-intro">
-          Only costs not already counted above. The purchase price is a one-off
-          amount used for payback when you compare options; it is never added to
-          monthly cost.
-        </p>
+
         <div className="form-grid">
           <Q
             label="Machine maintenance (€ per month)"
-            hint="Service, spare parts; 0 if none."
+            hint="0 if none"
             value={machine.maintenanceEuroPerMonth}
             onChange={(maintenanceEuroPerMonth) =>
               updateMachine(props, { maintenanceEuroPerMonth })
@@ -384,7 +368,7 @@ export function LabourSection(props: SectionProps) {
           />
           <Q
             label="Other recurring packaging costs (€ per month)"
-            hint="e.g. boxes, tape, cleaning; 0 if none."
+            hint="Boxes, tape, cleaning. 0 if none"
             value={input.additionalOperatingEuroPerMonth}
             onChange={(additionalOperatingEuroPerMonth) =>
               change({ ...input, additionalOperatingEuroPerMonth })

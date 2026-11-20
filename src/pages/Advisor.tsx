@@ -204,13 +204,10 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
     <div className="page research">
       <header className="page-head">
         <div>
-          <span className="eyebrow">Ask market research</span>
           <h1>Market research</h1>
           <p>
-            Ask how to cut costs, pack more efficiently or produce more. The
-            assistant researches machines, materials, suppliers and EU rules on
-            the web, cites its sources, and tests options with PackPilot's
-            calculations on your data.
+            Ask how to cut costs, pack faster or produce more. Answers use your
+            numbers and cite their sources.
           </p>
         </div>
         {hasData && (
@@ -225,7 +222,6 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
       {hasData ? (
         <ResearchBasis
           input={baseline.input}
-          snapshot={snapshot!}
           survey={survey}
           onRemoveSurvey={() => {
             clearSurvey(scope);
@@ -240,11 +236,7 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
           data-testid="general-guidance"
         >
           <h2>General guidance only</h2>
-          <p>
-            You haven't entered your company data, so the assistant can only
-            give general advice. Tailored recommendations, estimated savings and
-            capacity figures need your production and cost data.
-          </p>
+          <p>Enter your data for advice based on your own costs.</p>
           <Link to="/welcome" className="button">
             Enter your data
           </Link>
@@ -274,9 +266,8 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
           )}
           {older && (
             <p className="notice" data-testid="older-data-notice">
-              Your data or attached survey changed since some answers below.
-              Those answers are marked <strong>Based on older data</strong> and
-              are no longer sent with new questions.
+              Your data changed since the answers marked{" "}
+              <strong>Based on older data</strong>.
             </p>
           )}
           {turns.map((turn, i) => {
@@ -314,21 +305,14 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
                 {turn.basis && (
                   <p className="answer-basis" data-testid="answer-basis">
                     {turn.basis.snapshotId
-                      ? `Based on your saved data (snapshot ${turn.basis.snapshotId}${
-                          turn.basis.surveyAttached
-                            ? ", with customer survey"
-                            : ""
-                        })`
-                      : "General guidance without company data"}{" "}
-                    · {turn.basis.engineCalls} PackPilot calculation
+                      ? turn.basis.surveyAttached
+                        ? "Your data and survey"
+                        : "Your data"
+                      : "General advice"}{" "}
+                    · {turn.basis.engineCalls} calculation
                     {turn.basis.engineCalls === 1 ? "" : "s"} ·{" "}
                     {turn.basis.researchCalls} web search
-                    {turn.basis.researchCalls === 1 ? "" : "es"} · generated{" "}
-                    {new Date(turn.basis.generatedAt).toLocaleString("en-GB", {
-                      dateStyle: "medium",
-                      timeStyle: "short",
-                    })}{" "}
-                    by {turn.basis.model}.
+                    {turn.basis.researchCalls === 1 ? "" : "es"}
                   </p>
                 )}
                 {turn.sources && turn.sources.length > 0 && (
@@ -432,13 +416,11 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
 
 function ResearchBasis({
   input,
-  snapshot,
   survey,
   onRemoveSurvey,
   gateway,
 }: {
   input: Parameters<ReturnType<typeof useWorkspace>["gateway"]["calculate"]>[0];
-  snapshot: string;
   survey: { responses: number } | null;
   onRemoveSurvey: () => void;
   gateway: ReturnType<typeof useWorkspace>["gateway"];
@@ -450,28 +432,22 @@ function ResearchBasis({
     <section className="card research-basis" aria-label="Research basis">
       <div className="basis-row">
         <div>
-          <span className="kpi-label">Using your saved data</span>
+          <span className="kpi-label">Your costs</span>
           {costs.data ? (
             <p data-testid="research-costs">
-              Packaging costs you{" "}
               <strong>
                 {money(costs.data.totalPackagingOperatingEuro)} a month
               </strong>{" "}
-              ({money(costs.data.packagingEuroPerPlannedKg, 3)} per kg). Every
-              option is compared with these figures.
+              · {money(costs.data.packagingEuroPerPlannedKg, 3)} per kg
             </p>
           ) : (
             <p className="muted">Calculating your costs…</p>
           )}
         </div>
-        <span className="badge" title="Identifies the exact data sent">
-          Snapshot {snapshot}
-        </span>
       </div>
       {survey ? (
         <p className="survey-attached" data-testid="survey-attached">
-          Customer survey attached ({survey.responses} responses): the assistant
-          uses it in live questions.{" "}
+          Customer survey attached ({survey.responses} responses).{" "}
           <button
             type="button"
             className="link-button"
@@ -480,12 +456,7 @@ function ResearchBasis({
             Remove
           </button>
         </p>
-      ) : (
-        <p className="muted small">
-          Tip: run a <Link to="/survey">customer survey</Link> and attach the
-          results for answers that reflect what your customers want.
-        </p>
-      )}
+      ) : null}
     </section>
   );
 }

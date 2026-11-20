@@ -5,6 +5,12 @@ import { decimalText } from "./ApiResults";
 const show = (q: Quantity, unit = "", digits = 0) =>
   q.value === null ? "not entered" : `${decimalText(q.value, digits)}${unit}`;
 
+const grams = (q: Quantity) => {
+  const g = Number(q.value);
+  if (q.value === null || !Number.isFinite(g)) return "not entered";
+  return g >= 1000 && g % 1000 === 0 ? `${g / 1000} kg` : `${g} g`;
+};
+
 /** Counts input values by source: reported, the user's entries, not entered. */
 export function sourceCounts(input: ScenarioInput) {
   const counts = { reported: 0, entered: 0, missing: 0 };
@@ -32,7 +38,6 @@ export function DataSummary({
   input: ScenarioInput;
   savedAt?: string | null;
 }) {
-  const counts = sourceCounts(input);
   const machine = input.machines.at(0);
   const cycle =
     machine?.throughput.method === "cycle" ? machine.throughput : null;
@@ -53,7 +58,7 @@ export function DataSummary({
             {input.formats
               .map(
                 (f) =>
-                  `${show(f.portionWeightGrams, " g")} (${show(f.allocationPercent, "%")})`,
+                  `${grams(f.portionWeightGrams)} (${show(f.allocationPercent, "%")})`,
               )
               .join(" · ")}
           </dd>
@@ -76,12 +81,15 @@ export function DataSummary({
           </div>
         )}
       </dl>
-      <p className="data-sources" data-testid="data-sources">
-        Sources: {counts.reported} reported, {counts.entered} your entries or
-        estimates, {counts.missing} not entered.
-        {savedAt &&
-          ` Last saved ${new Date(savedAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}.`}
-      </p>
+      {savedAt && (
+        <p className="data-sources" data-testid="data-saved">
+          Last saved{" "}
+          {new Date(savedAt).toLocaleString("en-GB", {
+            dateStyle: "medium",
+            timeStyle: "short",
+          })}
+        </p>
+      )}
     </section>
   );
 }

@@ -22,13 +22,6 @@ import { createDemoScenario } from "../../backend/src/domain/demo";
 import { EXAMPLE_PROFILE } from "../demo/apiDemo";
 
 const LAST = STEPS.length - 1;
-const INTRO = [
-  "How much you produce each month and the pack sizes it goes into.",
-  "What the packaging of one pack costs you.",
-  "How packing is staffed and how much machine time you have.",
-  "Check your answers. You can change everything later in Edit data & costs.",
-];
-
 /**
  * First visit: a full-screen, step-by-step form for the company's own
  * production and cost data. Nothing is prefilled with sample figures, and no
@@ -181,18 +174,12 @@ export function Onboarding() {
               : "Set up your workspace"}
           </span>
           <h1>Enter your data</h1>
-          <p>
-            PackPilot calculates your packaging costs and forecasts from your
-            own numbers. It takes about three minutes; leave anything you don't
-            know empty.
-          </p>
+          <p>About three minutes. Leave anything you don't know empty.</p>
           {mode === "demo" && step === 0 && (
             <div className="notice example-offer">
               <p>
-                <strong>Just looking around?</strong> Load the example pilot
-                profile (OG TOFU): a Latvian tofu producer's reported figures
-                (about 1,000 kg a month, HURAKAN VAC 400, 1 kg / 500 g / 250 g
-                packs). It replaces anything in this demo.
+                <strong>Just looking around?</strong> Try it with a real Latvian
+                tofu producer's numbers.
               </p>
               <button
                 type="button"
@@ -240,7 +227,6 @@ export function Onboarding() {
             <h2 id="step-title" ref={heading} tabIndex={-1}>
               {STEPS[step].title}
             </h2>
-            <p>{INTRO[step]}</p>
           </div>
 
           <fieldset className="plain-fieldset" disabled={saving}>

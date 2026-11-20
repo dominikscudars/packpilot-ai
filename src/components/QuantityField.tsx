@@ -1,13 +1,6 @@
 import { useId } from "react";
 import type { Quantity } from "../models/api";
 
-const QUALITY_TEXT: Record<Quantity["quality"], string> = {
-  reported: "reported",
-  assumption: "your entry",
-  missing: "not entered",
-  verified: "verified",
-};
-
 export const USER_NOTE =
   "User-entered planning assumption; not independently verified.";
 
@@ -40,14 +33,6 @@ export function QuantityField({
 }) {
   const generated = useId();
   const id = fieldId ?? generated;
-  // The user's own entries need no provenance line; imported or reported
-  // values keep theirs so the source stays visible.
-  const showSource =
-    value.quality === "reported" ||
-    value.quality === "verified" ||
-    (value.quality === "assumption" &&
-      !!value.sourceNote &&
-      value.sourceNote !== USER_NOTE);
   return (
     <div className={`field${error ? " field-invalid" : ""}`}>
       <label htmlFor={id}>{label}</label>
@@ -69,11 +54,7 @@ export function QuantityField({
                 },
           )
         }
-        aria-describedby={[
-          hint && `${id}-hint`,
-          error && `${id}-error`,
-          showSource && `${id}-source`,
-        ]
+        aria-describedby={[hint && `${id}-hint`, error && `${id}-error`]
           .filter(Boolean)
           .join(" ")}
       />
@@ -96,12 +77,6 @@ export function QuantityField({
         >
           {suggestion.text}
         </button>
-      )}
-      {showSource && (
-        <small id={`${id}-source`} className="field-source">
-          {QUALITY_TEXT[value.quality] ?? value.quality}
-          {value.sourceNote ? ` · ${value.sourceNote}` : ""}
-        </small>
       )}
     </div>
   );

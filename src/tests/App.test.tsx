@@ -64,7 +64,7 @@ const change = (label: string, value: string) =>
 it("points visitors to the local demo when sign-in is not configured", () => {
   mount();
   expect(
-    screen.getByText(/Company accounts are not enabled on this demo site yet/),
+    screen.getByText(/Sign-in isn.t enabled on this demo yet/),
   ).toBeInTheDocument();
   expect(screen.queryByText(/environment variables/)).toBeNull();
   expect(
@@ -711,14 +711,14 @@ it("the workspace leads with Your costs and Future forecasting, and offers marke
   // No grid of unrelated feature cards.
   expect(screen.queryByRole("region", { name: "Next actions" })).toBeNull();
   expect(screen.getByTestId("cost-drivers")).toHaveTextContent(
-    "Labour is the largest cost: 68%",
+    "Labour is 68% of your monthly cost",
   );
   expect(screen.getByTestId("cost-drivers")).toHaveTextContent(
-    "250 g packs cost €0.88/kg to pack",
+    "250 g packs cost 4.0× more per kg than 1 kg packs",
   );
   // A projection only follows stated assumptions; none means no change.
   expect(screen.getByTestId("projection-summary")).toHaveTextContent(
-    "No change assumed",
+    "No change set",
   );
   change("Production change", "100");
   expect(screen.getByTestId("projection-summary")).toHaveTextContent(

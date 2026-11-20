@@ -27,26 +27,16 @@ export function Workspace() {
           <span className="eyebrow">{company.name}</span>
           <h1>Your workspace</h1>
           {baseline.name === EXAMPLE_PROFILE && (
-            <p className="notice" data-testid="example-profile">
-              <strong>{EXAMPLE_PROFILE}</strong> · sample data loaded for the
-              demo, not your company's. Use Reset demo to enter your own.
+            <p className="badge example-badge" data-testid="example-profile">
+              Example data: OG TOFU
             </p>
           )}
-          <p>
-            {empty
-              ? "Enter your production and cost data to see your costs and forecasts."
-              : `Calculated from your saved data${
-                  savedAt
-                    ? `, last saved ${new Date(savedAt).toLocaleString(
-                        "en-GB",
-                        {
-                          dateStyle: "medium",
-                          timeStyle: "short",
-                        },
-                      )}`
-                    : ""
-                }.`}
-          </p>
+          {empty && (
+            <p>
+              Enter your production and cost data to see your costs and
+              forecasts.
+            </p>
+          )}
         </div>
         <div className="head-actions">
           <Link to={empty ? "/welcome" : "/data"} className="button secondary">
@@ -305,15 +295,11 @@ function Costs({
 
       {missing.length > 0 && (
         <div className="missing-strip" role="note" aria-label="What is missing">
-          <strong>To complete your picture:</strong>
+          <strong>Add for complete numbers:</strong>
           <ul>
             {missing.map((m) => (
               <li key={m.needs}>
                 <Link to={`/data#${m.field}`}>{m.needs}</Link>
-                <span className="muted">
-                  {" "}
-                  — needed for {m.decision.toLowerCase()}
-                </span>
               </li>
             ))}
           </ul>

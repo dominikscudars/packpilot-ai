@@ -103,12 +103,7 @@ export function CompanyProfile() {
     <>
       <header className="page-heading">
         <div>
-          <span className="eyebrow">YOUR COMPANY DATA</span>
           <h1>Company profile</h1>
-          <p>
-            Changes are saved explicitly. Missing information is never filled
-            with demo data.
-          </p>
         </div>
       </header>
       <section className="panel">
@@ -182,66 +177,62 @@ export function CompanyProfile() {
         <RequestState error={error} />
         {notice && <p role="status">{notice}</p>}
       </section>
-      {catalog.products.length ? (
-        catalog.products.map((p) => <ProductEditor key={p.id} record={p} />)
-      ) : (
+      {catalog.products.length
+        ? catalog.products.map((p) => <ProductEditor key={p.id} record={p} />)
+        : null}
+      {catalog.formats.length +
+        catalog.machines.length +
+        catalog.suppliers.length >
+        0 && (
         <section className="panel">
-          <h2>No products yet</h2>
-          <p>
-            Create product and packaging catalog records through the company
-            API. This integration edits existing records; full catalog
-            onboarding is not available yet.
-          </p>
+          <h2>Packaging catalog</h2>
+
+          <div className="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th>Format</th>
+                  <th>Material</th>
+                  <th>Commercial status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {catalog.formats.map((f) => (
+                  <tr key={f.id}>
+                    <td>
+                      {catalog.products.find((p) => p.id === f.productId)?.name}
+                    </td>
+                    <td>{f.portionWeightGrams.value ?? "Unknown"} g</td>
+                    <td>
+                      {
+                        catalog.materials.find((m) => m.id === f.materialId)
+                          ?.name
+                      }
+                    </td>
+                    <td>{f.commercialStatus}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {!catalog.formats.length && <p>No packaging formats yet.</p>}
+          <h3>Machines</h3>
+          {catalog.machines.map((m) => (
+            <p key={m.id}>
+              {m.model} · {m.dataQualityStatus}
+            </p>
+          ))}
+          {!catalog.machines.length && <p>No machines recorded.</p>}
+          <h3>Suppliers</h3>
+          {catalog.suppliers.map((s) => (
+            <p key={s.id}>
+              {s.name} · {s.contactInformation ?? "Contact information unknown"}
+            </p>
+          ))}
+          {!catalog.suppliers.length && <p>No suppliers recorded.</p>}
         </section>
       )}
-      <section className="panel">
-        <h2>Packaging catalog</h2>
-        <p className="muted">
-          Your operation is edited in Edit data &amp; costs. Saved scenarios
-          keep snapshots; catalog changes do not silently rewrite them.
-        </p>
-        <div className="table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>Product</th>
-                <th>Format</th>
-                <th>Material</th>
-                <th>Commercial status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {catalog.formats.map((f) => (
-                <tr key={f.id}>
-                  <td>
-                    {catalog.products.find((p) => p.id === f.productId)?.name}
-                  </td>
-                  <td>{f.portionWeightGrams.value ?? "Unknown"} g</td>
-                  <td>
-                    {catalog.materials.find((m) => m.id === f.materialId)?.name}
-                  </td>
-                  <td>{f.commercialStatus}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {!catalog.formats.length && <p>No packaging formats yet.</p>}
-        <h3>Machines</h3>
-        {catalog.machines.map((m) => (
-          <p key={m.id}>
-            {m.model} · {m.dataQualityStatus}
-          </p>
-        ))}
-        {!catalog.machines.length && <p>No machines recorded.</p>}
-        <h3>Suppliers</h3>
-        {catalog.suppliers.map((s) => (
-          <p key={s.id}>
-            {s.name} · {s.contactInformation ?? "Contact information unknown"}
-          </p>
-        ))}
-        {!catalog.suppliers.length && <p>No suppliers recorded.</p>}
-      </section>
     </>
   );
 }

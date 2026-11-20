@@ -43,7 +43,7 @@ export function Forecasting({ input }: { input: ScenarioInput }) {
         <input
           type="number"
           aria-label={label}
-          aria-description={`Percent, ${hint}`}
+          aria-description={hint ? `Percent, ${hint}` : "Percent"}
           inputMode="decimal"
           step={5}
           min={-90}
@@ -59,23 +59,20 @@ export function Forecasting({ input }: { input: ScenarioInput }) {
         />
         <span aria-hidden="true">%</span>
       </span>
-      <small>{hint}</small>
+      {hint && <small>{hint}</small>}
     </label>
   );
 
   return (
     <div className="forecasting">
-      <p className="muted small">
-        Projection from your current data and the assumptions below.
-      </p>
       <div className="assumptions" aria-label="Projection assumptions">
         {field(
           "productionChangePct",
           "Production change",
-          `by ${a.months} months from now`,
+          `in ${a.months} months`,
         )}
-        {field("materialChangePct", "Material price change", "bags and labels")}
-        {field("labourChangePct", "Labour cost change", "per pack or per hour")}
+        {field("materialChangePct", "Material price change", "")}
+        {field("labourChangePct", "Labour cost change", "")}
         <label className="assumption">
           <span>Horizon</span>
           <select
@@ -86,7 +83,6 @@ export function Forecasting({ input }: { input: ScenarioInput }) {
             <option value={12}>12 months</option>
             <option value={24}>24 months</option>
           </select>
-          <small>changes ramp in evenly</small>
         </label>
       </div>
 
@@ -133,30 +129,23 @@ export function Forecasting({ input }: { input: ScenarioInput }) {
         <span className="key-dashed" /> projected
       </p>
 
-      <div className="capacity-note" role="note" data-testid="capacity-note">
-        {limit.available === null ? (
-          <>
-            Add the hours your machine is available per month in{" "}
-            <Link to="/data#equipment">Edit data &amp; costs</Link> to see when
-            you would run out of capacity.
-          </>
-        ) : limit.first ? (
-          <>
-            <strong>Capacity limit:</strong> from {limit.first.label} packing
-            needs {hours(limit.first.machineHours ?? 0)} a month, more than your{" "}
-            {hours(limit.available)} available. You would need more hours, a
-            faster machine or a second shift.
-          </>
-        ) : (
-          <>
-            <strong>Capacity:</strong> your available {hours(limit.available)} a
-            month cover this whole period
-            {end.machineHours !== null &&
-              ` (up to ${hours(end.machineHours)} needed)`}
-            .
-          </>
-        )}
-      </div>
+      {limit.available !== null && (
+        <div className="capacity-note" role="note" data-testid="capacity-note">
+          {limit.first ? (
+            <>
+              <strong>Capacity limit from {limit.first.label}:</strong>{" "}
+              {hours(limit.first.machineHours ?? 0)} needed,{" "}
+              {hours(limit.available)} available.
+            </>
+          ) : (
+            <>
+              <strong>Capacity is enough:</strong> up to{" "}
+              {hours(end.machineHours ?? 0)} needed of {hours(limit.available)}{" "}
+              available.
+            </>
+          )}
+        </div>
+      )}
 
       <Optimise
         end={endInput}
@@ -175,9 +164,9 @@ const money = (v: number, digits = 2) =>
 
 /** Concrete ways to optimise the projected period, each recalculated by the engine. */
 function Optimise({ end, label }: { end: ScenarioInput; label: string }) {
-  const { options, base } = useMemo(() => optimisations(end), [end]);
+  const { options } = useMemo(() => optimisations(end), [end]);
   if (!options.length) return null;
-  const when = label === "Now" ? "today" : `for ${label}`;
+
   return (
     <section
       className="optimise"
@@ -188,17 +177,6 @@ function Optimise({ end, label }: { end: ScenarioInput; label: string }) {
         <h3 id="optimise-title">
           Ways to optimise {label === "Now" ? "your costs" : `by ${label}`}
         </h3>
-        <p>
-          Each option is recalculated on your{" "}
-          {label === "Now" ? "current" : "projected"} figures {when}
-          {base.cost !== null && (
-            <>
-              : <strong>{money(base.cost)} a month</strong>
-              {base.perKg !== null && `, ${money(base.perKg, 3)} per kg`}
-            </>
-          )}
-          .
-        </p>
       </div>
       <ol className="optimise-list">
         {options.map((o, i) => {
@@ -243,7 +221,6 @@ function Optimise({ end, label }: { end: ScenarioInput; label: string }) {
                 )}
               </div>
               <p className="optimise-why">{o.why}</p>
-              <p className="optimise-assumption">Assumes: {o.assumption}</p>
               <div className="optimise-actions">
                 {o.testable && (
                   <a href="#test-change" className="text-link">
@@ -282,9 +259,9 @@ function Summary({
   if (unchanged)
     return (
       <>
-        No change assumed: your cost stays at{" "}
+        No change set:{" "}
         <strong>{now.costEuro === null ? "Unknown" : eur(now.costEuro)}</strong>{" "}
-        a month. Set a production or price change above to see its effect.
+        a month.
       </>
     );
   return (

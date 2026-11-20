@@ -85,8 +85,8 @@ describe("advisor grounding in the browser", () => {
     await openAdvisor();
     askQuestion("Which film?");
     const used = await screen.findByTestId("answer-basis");
-    expect(used).toHaveTextContent("snapshot abcd1234, with customer survey");
-    expect(used).toHaveTextContent("3 PackPilot calculations");
+    expect(used).toHaveTextContent("Your data and survey");
+    expect(used).toHaveTextContent("3 calculations");
     expect(used).toHaveTextContent("2 web searches");
     expect(screen.getByRole("link", { name: "A" })).toHaveAttribute(
       "href",
@@ -146,11 +146,11 @@ describe("advisor grounding in the browser", () => {
     );
     fireEvent.click(navLink(/Market research/));
     expect(await screen.findByTestId("general-guidance")).toHaveTextContent(
-      "Tailored recommendations",
+      "Enter your data for advice based on your own costs",
     );
     askQuestion("How could we produce more?");
     expect(await screen.findByTestId("answer-basis")).toHaveTextContent(
-      "General guidance without company data",
+      "General advice",
     );
     const sent = JSON.parse(
       String(
