@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import type { Quantity } from "../models/api";
 import { useWorkspace } from "../components/WorkspaceProvider";
+import { EXAMPLE_PROFILE } from "../demo/apiDemo";
 import { useRequest, RequestState } from "../components/AsyncState";
 import { money, decimalText } from "../components/ApiResults";
 import { completeness, observations } from "../insights/insights";
@@ -105,6 +106,12 @@ export function Brief() {
         <div>
           <span className="eyebrow">DECISION BRIEF</span>
           <h1>Packaging decision brief</h1>
+          {baseline.name === EXAMPLE_PROFILE && (
+            <p className="notice" data-testid="example-profile">
+              <strong>{EXAMPLE_PROFILE}</strong> · sample data loaded for the
+              demo, not your company's. Use Reset demo to enter your own.
+            </p>
+          )}
           <p>
             {company.name} · prepared {today}
             {savedAt &&

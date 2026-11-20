@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useWorkspace } from "../components/WorkspaceProvider";
+import { EXAMPLE_PROFILE } from "../demo/apiDemo";
 import { useRequest, RequestState } from "../components/AsyncState";
 import { money, decimalText, Notes } from "../components/ApiResults";
 import { BarList, SegmentedBar } from "../components/charts";
@@ -24,6 +25,12 @@ export function Workspace() {
         <div>
           <span className="eyebrow">{company.name}</span>
           <h1>Your workspace</h1>
+          {baseline.name === EXAMPLE_PROFILE && (
+            <p className="notice" data-testid="example-profile">
+              <strong>{EXAMPLE_PROFILE}</strong> · sample data loaded for the
+              demo, not your company's. Use Reset demo to enter your own.
+            </p>
+          )}
           <p>
             {empty
               ? "Enter your production and cost data to see your costs and forecasts."

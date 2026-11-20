@@ -523,7 +523,12 @@ it("onboarding starts empty, shows no results, validates each step and opens the
   expect(
     screen.queryByRole("navigation", { name: "Main navigation" }),
   ).toBeNull();
-  expect(screen.queryByRole("button", { name: /OG TOFU/ })).toBeNull();
+  // No per-field OG TOFU fills; only the one labelled, opt-in example button.
+  expect(
+    screen
+      .getAllByRole("button", { name: /OG TOFU/ })
+      .map((b) => b.textContent),
+  ).toEqual(["Load example company (OG TOFU)"]);
   expect(screen.getByRole("progressbar")).toHaveAttribute(
     "aria-valuetext",
     "Step 1 of 4",

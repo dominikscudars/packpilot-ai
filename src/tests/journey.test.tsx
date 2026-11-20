@@ -40,6 +40,32 @@ async function open(path = "/") {
   return view;
 }
 
+describe("example company", () => {
+  it("loads the labelled OG TOFU pilot profile and opens the workspace", async () => {
+    await open();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Load example company (OG TOFU)" }),
+    );
+    expect(await screen.findByTestId("operating-cost")).toHaveTextContent(
+      "€286.00",
+    );
+    expect(screen.getByTestId("example-profile")).toHaveTextContent(
+      "Example pilot profile (OG TOFU)",
+    );
+    expect(loadSetupRecord(SCOPE)).not.toBeNull();
+    const saved = JSON.parse(localStorage.getItem(DEMO_KEY) ?? "{}");
+    expect(saved.company.name).toBe("OG TOFU");
+    // Unknown recurring costs stay unknown, never €0.
+    expect(
+      saved.catalog.scenarios[0].input.machines[0].maintenanceEuroPerMonth
+        .value,
+    ).toBeNull();
+    expect(
+      saved.catalog.scenarios[0].input.additionalOperatingEuroPerMonth.value,
+    ).toBeNull();
+  });
+});
+
 describe("skip journey", () => {
   it("opens an empty workspace without any calculated or sample figures", async () => {
     await open();
@@ -110,7 +136,9 @@ describe("returning users and direct links", () => {
     expect(
       screen.getByLabelText("How many kilograms do you produce per month?"),
     ).toHaveValue("");
-    expect(screen.queryByText(/OG TOFU/)).toBeNull();
+    // OG TOFU is only named in the opt-in "Load example company" offer.
+    for (const el of screen.queryAllByText(/OG TOFU/))
+      expect(el.closest(".example-offer")).not.toBeNull();
     expect(localStorage.getItem(DEMO_KEY)).toBeNull();
   });
 });
