@@ -87,13 +87,8 @@ export function EditData() {
     <div className="page edit-page">
       <header className="page-head">
         <div>
-          <span className="eyebrow">Your saved inputs</span>
           <h1>Edit data &amp; costs</h1>
-          <p>
-            Change any value and save: your costs and forecasts update at once.
-            Leave a field empty if you don't know it; results that need it show
-            as Unknown, never as zero.
-          </p>
+          <p>Leave a field empty if you don't know it.</p>
         </div>
         <nav className="section-jump" aria-label="Sections">
           <a href="#production">Production</a>

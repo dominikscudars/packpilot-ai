@@ -44,7 +44,7 @@ describe("example company", () => {
       "€286.00",
     );
     expect(screen.getByTestId("example-profile")).toHaveTextContent(
-      "Example pilot profile (OG TOFU)",
+      "Example data: OG TOFU",
     );
     expect(loadSetupRecord(SCOPE)).not.toBeNull();
     const saved = JSON.parse(localStorage.getItem(DEMO_KEY) ?? "{}");
@@ -155,7 +155,7 @@ describe("editing updates costs and forecasts", () => {
     );
     // The forecast now starts from the edited data.
     expect(screen.getByTestId("projection-summary")).toHaveTextContent(
-      "No change assumed: your cost stays at €294",
+      "No change set: €294 a month",
     );
   });
 });

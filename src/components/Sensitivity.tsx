@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import type { PackagingCostResult, ScenarioInput } from "../models/api";
 import { useWorkspace } from "./WorkspaceProvider";
 import { useRequest, RequestState } from "./AsyncState";
-import { money, decimalText } from "./ApiResults";
+import { money } from "./ApiResults";
 import { SERIES } from "./charts";
 import {
   DRIVERS,
@@ -27,9 +27,7 @@ export function Sensitivity({
     >
       <h2>Sensitivity and break-even</h2>
       <p className="muted">
-        Which input moves your cost per kg most, each changed by ±{STEP * 100}%
-        on its own. Calculated with PackPilot's comparison engine; your saved
-        data is not changed.
+        What moves your cost per kg most, each input ±{STEP * 100}%.
       </p>
       {result.packagingEuroPerPlannedKg === null ? (
         <p className="notice" data-testid="sensitivity-missing">
@@ -75,9 +73,13 @@ function Drivers({ input }: { input: ScenarioInput }) {
         loading={!state.error}
       />
     );
+  // Inputs with no effect on cost per kg (e.g. volume when every cost is
+  // per pack) are left out rather than shown as ±€0.000.
   const known = state.data.filter(
     (r): r is { driver: Driver; low: string; high: string } =>
-      r.low !== null && r.high !== null,
+      r.low !== null &&
+      r.high !== null &&
+      Math.max(Math.abs(Number(r.low)), Math.abs(Number(r.high))) >= 0.0005,
   );
   const unknown = state.data.filter((r) => r.low === null || r.high === null);
   const size = (r: { low: string; high: string }) =>
@@ -118,11 +120,6 @@ function Drivers({ input }: { input: ScenarioInput }) {
               </li>
             ))}
           </ul>
-          <figcaption className="muted">
-            Change in packaging cost per kg versus your saved data.
-            {known.some((r) => r.driver.id === "volume") &&
-              " Costs charged per pack scale with production, so volume moves the cost per kg only through costs that do not."}
-          </figcaption>
         </figure>
       )}
       {unknown.map((r) => (
@@ -137,58 +134,38 @@ function Drivers({ input }: { input: ScenarioInput }) {
 
 function BreakEvenView({ result }: { result: PackagingCostResult }) {
   const b = breakEven(result);
+  // Shown only once it can be calculated; missing inputs are listed in
+  // Your costs already.
+  if (b.status === "missing") return null;
   return (
     <div className="break-even" data-testid="break-even">
-      <h3 className="mini-title">Equipment payback threshold</h3>
-      {b.status === "missing" ? (
-        <p className="notice" data-testid="break-even-missing">
-          Add{" "}
-          {b.needs.map((n, i) => (
-            <span key={n.field + n.text}>
-              {i > 0 && " and "}
-              <Link to={`/data#${n.field}`}>{n.text}</Link>
-            </span>
-          ))}{" "}
-          to calculate break-even.
-        </p>
-      ) : (
-        <>
-          <p>
-            To pay back the recorded machine investment of{" "}
-            <strong>{money(b.investmentEuro)}</strong>, the machine must save at
-            least this much each month versus packing without it, after
-            maintenance and other running costs:
-          </p>
-          <table>
-            <thead>
-              <tr>
-                <th scope="col">Pay back within</th>
-                <th scope="col">Net saving per month</th>
-                <th scope="col">Per kg produced</th>
-              </tr>
-            </thead>
-            <tbody>
-              {b.rows.map((row) => (
-                <tr key={row.months}>
-                  <th scope="row">{row.months} months</th>
-                  <td>{money(row.monthlySavingEuro)}</td>
-                  <td>
-                    {row.savingEuroPerKg === null
-                      ? "Unknown"
-                      : money(row.savingEuroPerKg, 3)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <p className="footnote">
-            Simple payback at your current production of{" "}
-            {decimalText(result.monthlyProductionKg, 0)} kg a month; excludes
-            financing, taxes and resale value. To test a specific machine, use
-            Test a cost change.
-          </p>
-        </>
-      )}
+      <h3 className="mini-title">Machine payback</h3>
+      <p>
+        Monthly saving needed to pay back the{" "}
+        <strong>{money(b.investmentEuro)}</strong> machine:
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Pay back within</th>
+            <th scope="col">Net saving per month</th>
+            <th scope="col">Per kg produced</th>
+          </tr>
+        </thead>
+        <tbody>
+          {b.rows.map((row) => (
+            <tr key={row.months}>
+              <th scope="row">{row.months} months</th>
+              <td>{money(row.monthlySavingEuro)}</td>
+              <td>
+                {row.savingEuroPerKg === null
+                  ? "Unknown"
+                  : money(row.savingEuroPerKg, 3)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

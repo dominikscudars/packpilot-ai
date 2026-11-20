@@ -97,7 +97,7 @@ export function optimisations(end: ScenarioInput): {
       {
         id: "machine",
         title: "Seal twice as many packs per cycle",
-        why: `A double-chamber or larger vacuum machine packs ${Number(t.packagesPerCycle.value) * 2} packs per cycle instead of ${t.packagesPerCycle.value}, halving machine time${end.labor.method === "hourly" ? " and the paid packing hours" : ""}.`,
+        why: `A double-chamber machine seals ${Number(t.packagesPerCycle.value) * 2} packs per cycle instead of ${t.packagesPerCycle.value}.`,
         assumption:
           "Same cycle time with twice the packs per cycle; the machine price is not included.",
         research:
@@ -132,7 +132,7 @@ export function optimisations(end: ScenarioInput): {
       {
         id: "mix",
         title: `Move ${move}% of volume from ${size(small.grams)} to ${size(large.grams)} packs`,
-        why: `Every pack needs its own bag, label and handling, so ${size(large.grams)} packs cost far less per kilogram than ${size(small.grams)} packs.`,
+        why: `Bigger packs need fewer bags, labels and handling per kilogram. Check customers want it.`,
         assumption: `${move} percentage points of production move to ${size(large.grams)} packs; customers must accept it — check with the customer survey.`,
         research: `Would our customers buy ${size(large.grams)} packs instead of ${size(small.grams)} packs, and how should we price them?`,
         testable: false,
@@ -174,7 +174,7 @@ export function optimisations(end: ScenarioInput): {
       {
         id: "material",
         title: "Negotiate 10% off bags and labels",
-        why: `You would buy about ${base.packages === null ? "the same number of" : Math.round(base.packages).toLocaleString("en-US")} bags and labels a month — enough volume to ask for a tiered price or compare a second supplier.`,
+        why: `At ${base.packages === null ? "your" : Math.round(base.packages).toLocaleString("en-US")} bags a month, ask for a volume price or a second quote.`,
         assumption: "A 10% lower price on every bag and label.",
         research:
           "Which suppliers in Latvia or the EU offer vacuum bags and labels at our volume, and what volume discounts are typical?",
@@ -209,7 +209,7 @@ export function optimisations(end: ScenarioInput): {
       {
         id: "labour",
         title: "Make packing 10% faster per pack",
-        why: "Batching by pack size, pre-printed labels and a fixed packing station cut handling time on every pack.",
+        why: "Batch by pack size and use pre-printed labels.",
         assumption: "Labour cost per pack falls by 10% at the same wage.",
         research:
           "How can a small food producer reduce manual packing time per pack without new machinery?",
@@ -225,7 +225,7 @@ export function optimisations(end: ScenarioInput): {
     options.unshift({
       id: "capacity",
       title: `Add about ${extra.toLocaleString("en-US")} machine hours a month`,
-      why: `Packing would need ${base.hours.toFixed(1)} h against your ${available} h available. An extra shift or longer days covers the gap without new equipment.`,
+      why: `You would need ${base.hours.toFixed(1)} h but have ${available} h. An extra shift covers it.`,
       assumption:
         "The machine and staff can run longer; extra wages are not included.",
       savingEuro: null,

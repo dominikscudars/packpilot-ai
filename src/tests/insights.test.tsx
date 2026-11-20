@@ -38,10 +38,11 @@ describe("observations and completeness", () => {
     const text = observations(calculatePackaging(input), input).map(
       (o) => o.text,
     );
-    expect(text.length).toBeLessThanOrEqual(3);
-    expect(text[0]).toMatch(/is the largest cost: \d+% of your €286\.00/);
-    expect(text[1]).toMatch(/^250 g packs cost €0\.88\/kg/);
-    expect(text[2]).toMatch(/machine-hours a month/);
+    // No available machine hours entered, so no capacity line.
+    expect(text).toEqual([
+      "Labour is 68% of your monthly cost.",
+      "250 g packs cost 4.0× more per kg than 1 kg packs (€0.88 vs €0.22).",
+    ]);
   });
   it("lists blocked decisions and links each to its field", () => {
     const missing = completeness(createDemoScenario());
@@ -137,18 +138,16 @@ describe("Your costs decisions", () => {
   it("shows observations, sources and the missing-input action list", async () => {
     await openReference();
     expect(await screen.findByTestId("cost-drivers")).toHaveTextContent(
-      "largest cost",
+      "of your monthly cost",
     );
-    expect(screen.getByTestId("data-sources")).toHaveTextContent(
-      /Sources: \d+ reported/,
-    );
+    expect(screen.getByTestId("data-saved")).toHaveTextContent(/Last saved/);
     const missing = screen.getByRole("note", { name: "What is missing" });
     expect(
       within(missing).getAllByRole("link")[0].getAttribute("href"),
     ).toMatch(/^\/data#/);
   });
 
-  it("shows sensitivity bars and asks for missing break-even inputs", async () => {
+  it("shows sensitivity bars and hides break-even until it can be calculated", async () => {
     await openReference();
     const panel = await screen.findByRole("region", {
       name: "Sensitivity and break-even",
@@ -158,9 +157,9 @@ describe("Your costs decisions", () => {
     expect(
       within(panel).getByTestId("sensitivity-material"),
     ).toBeInTheDocument();
-    expect(within(panel).getByTestId("break-even-missing")).toHaveTextContent(
-      "Add the machine purchase price and monthly maintenance and other recurring costs (0 if none) to calculate break-even.",
-    );
+    // Monthly production has no effect when every cost is per pack: no ±€0.000 row.
+    expect(within(panel).queryByTestId("sensitivity-volume")).toBeNull();
+    expect(within(panel).queryByTestId("break-even")).toBeNull();
   });
 
   it("compares a material change without saving it, hiding savings when costs are incomplete", async () => {

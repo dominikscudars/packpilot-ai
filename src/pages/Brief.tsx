@@ -12,7 +12,9 @@ const sizeLabel = (grams: number) =>
 const source = (q: Quantity) =>
   q.quality === "missing"
     ? "not entered"
-    : `${q.quality === "assumption" ? "your entry / estimate" : q.quality}${q.sourceNote ? ` — ${q.sourceNote}` : ""}`;
+    : q.quality === "assumption"
+      ? "estimate"
+      : q.quality;
 const value = (q: Quantity, unit: string) =>
   q.value === null ? "Unknown" : `${q.value} ${unit}`;
 
@@ -107,9 +109,8 @@ export function Brief() {
           <span className="eyebrow">DECISION BRIEF</span>
           <h1>Packaging decision brief</h1>
           {baseline.name === EXAMPLE_PROFILE && (
-            <p className="notice" data-testid="example-profile">
-              <strong>{EXAMPLE_PROFILE}</strong> · sample data loaded for the
-              demo, not your company's. Use Reset demo to enter your own.
+            <p className="badge example-badge" data-testid="example-profile">
+              Example data: OG TOFU
             </p>
           )}
           <p>
@@ -131,7 +132,7 @@ export function Brief() {
             Download CSV
           </button>
           <Link to="/" className="button secondary">
-            Back to Packaging Insights
+            Back to workspace
           </Link>
         </div>
       </header>

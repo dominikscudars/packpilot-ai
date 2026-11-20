@@ -157,8 +157,8 @@ export function TestChange() {
     <section className="panel test-change" aria-label="Test a cost change">
       <h2>Test a cost change</h2>
       <p className="muted">
-        Try one change without touching your saved data. PackPilot compares it
-        with your current operation; nothing changes until you apply it.
+        Compare one change with today. Your data stays as it is until you apply
+        it.
       </p>
       <div className="form-grid">
         <label>

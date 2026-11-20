@@ -48,13 +48,10 @@ export function Survey() {
     <>
       <header className="page-heading">
         <div>
-          <span className="eyebrow">FEATURE</span>
           <h1>Customer survey</h1>
           <p>
-            Ask your customers which pack sizes and prices they want. PackPilot
-            writes the questions from your pack sizes; you put them into Google
-            Forms, share the link, and paste the answers back here for the
-            market research assistant.
+            Ask customers which pack sizes and prices they want, then use the
+            answers in market research.
           </p>
         </div>
       </header>
@@ -95,10 +92,7 @@ export function Survey() {
             </label>
           ))}
         </div>
-        <p className="muted">
-          With prices for at least two sizes, the survey also asks which pack
-          customers would choose at those prices.
-        </p>
+
         <ol className="survey-preview" data-testid="survey-questions">
           {questions.map((q) => (
             <li key={q.title}>
@@ -180,10 +174,7 @@ export function Survey() {
             {fileError}
           </div>
         )}
-        <p className="muted">
-          The answers are counted in your browser. They are sent to the AI only
-          when you ask a live question in market research.
-        </p>
+
         {results.responses > 0 && (
           <div data-testid="survey-results">
             <p>

@@ -214,10 +214,7 @@ export function AuthGate({
           <br />
           <span>More clarity.</span>
         </h2>
-        <p>
-          Your packaging costs, production scenarios and inventory plans. One
-          connected workspace.
-        </p>
+        <p>Your packaging costs, forecasts and market research in one place.</p>
         <div className="auth-features">
           <span>
             <Icon name="wallet" /> Understand costs
@@ -226,17 +223,14 @@ export function AuthGate({
             <Icon name="spark" /> Research options
           </span>
           <span>
-            <Icon name="box" /> Plan inventory
+            <Icon name="chart" /> Forecast growth
           </span>
         </div>
       </aside>
       <section className="panel auth-panel">
         <span className="eyebrow">PACKPILOT AI</span>
         <h1>Your packaging workspace</h1>
-        <p>
-          Sign in to access your company’s profiles, saved scenarios and
-          inventory planning.
-        </p>
+        <p>Sign in to your company workspace.</p>
         {error && (
           <div className="error" role="alert">
             {error}
@@ -315,8 +309,8 @@ export function AuthGate({
               </form>
             ) : (
               <p className="notice">
-                Company accounts are not enabled on this demo site yet. Use{" "}
-                <strong>Open local demo</strong> below to try PackPilot.
+                Sign-in isn't enabled on this demo yet. Use{" "}
+                <strong>Open local demo</strong> below.
               </p>
             )}
           </>
@@ -342,7 +336,7 @@ export function AuthGate({
         )}
         <hr />
         <h2>Explore the local demo</h2>
-        <p>Try PackPilot with your own numbers.</p>
+
         <button
           className="secondary"
           onClick={() => {
