@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseTable, summaryText, tabulate } from "../survey/tabulate";
 import { buildSurvey, surveyText } from "../survey/questions";
-import { buildForecast } from "../forecast/forecast";
 
 describe("survey results", () => {
   const csv = [
@@ -76,29 +75,5 @@ describe("survey questions", () => {
       prices: { 500: 2 },
     });
     expect(qs.some((q) => q.title.startsWith("Imagine"))).toBe(false);
-  });
-});
-
-describe("sales forecast", () => {
-  const formats = [
-    { id: "f1", grams: 1000 },
-    { id: "f2", grams: 250 },
-  ];
-  it("fits a straight-line trend and averages the recent pack mix", () => {
-    const rows = parseTable(
-      "Month\t1 kg\t250 g\tNotes\n2026-07\t800\t800\tx\n2026-08\t900\t800\t\n2026-09\t1000\t800\t",
-    );
-    const f = buildForecast(rows, formats, "packs");
-    expect(f.history.map((h) => h.totalKg)).toEqual([1000, 1100, 1200]);
-    expect(f.trendKgPerMonth).toBe(100);
-    expect(f.forecast.at(0)).toEqual({ label: "2026-10", totalKg: 1300 });
-    expect(f.forecast.at(-1)).toEqual({ label: "2027-03", totalKg: 1800 });
-    expect(f.shares.f1 + f.shares.f2).toBe(100);
-    expect(f.shares.f1).toBe(81.8);
-    expect(f.unmatched).toEqual(["Notes"]);
-  });
-  it("reads kg columns when the numbers are kilograms", () => {
-    const rows = parseTable("Month,1 kg,250 g\n2026-09,700,50\n");
-    expect(buildForecast(rows, formats, "kg").history.at(0)?.totalKg).toBe(750);
   });
 });

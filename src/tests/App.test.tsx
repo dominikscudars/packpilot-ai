@@ -655,47 +655,6 @@ it("shows prepared OG TOFU research without calling the AI, and keeps it out of 
     vi.unstubAllGlobals();
   }
 });
-it("plans reorders from step 1 data with only stock counts typed in", async () => {
-  vi.useFakeTimers({ toFake: ["Date"] });
-  vi.setSystemTime(new Date("2026-11-19T12:00:00Z"));
-  try {
-    await openDemo();
-    fireEvent.click(screen.getByRole("link", { name: /Stock & orders/ }));
-    expect(
-      await screen.findByRole("region", { name: "Your data" }),
-    ).toHaveTextContent("1,000 kg / month");
-    expect(await screen.findByTestId("use-labels")).toHaveTextContent(
-      "You use about 1,300 a month (from your data).",
-    );
-    change("250 g bags in stock", "100");
-    change("1000 g bags in stock", "2000");
-    expect(
-      await screen.findByText(
-        /enough for about 15 days\. Order 241 by 19 Nov 2026\./,
-      ),
-    ).toBeInTheDocument();
-    expect(screen.getByTestId("plan-bag-format-3")).toHaveTextContent(
-      "Order now",
-    );
-    expect(screen.getByTestId("plan-bag-format-1")).toHaveTextContent(
-      /OK for now.*enough for about 75 days\. Order 800 by 11 Jan 2027\./,
-    );
-    expect(screen.getByTestId("order-list")).toHaveTextContent(
-      "250 g bags: 241 (order by 19 Nov 2026)",
-    );
-    expect(screen.getByTestId("order-list")).not.toHaveTextContent("1000 g");
-    fireEvent.click(
-      screen.getByRole("button", {
-        name: "Use 12 – OG TOFU for Kg of product per transport box",
-      }),
-    );
-    expect(screen.getByTestId("use-boxes")).toHaveTextContent(
-      "You use about 84 a month",
-    );
-  } finally {
-    vi.useRealTimers();
-  }
-});
 it("turns pasted survey answers into context for market research", async () => {
   const fetchMock = vi.fn(
     async () =>
@@ -743,28 +702,6 @@ it("turns pasted survey answers into context for market research", async () => {
     vi.unstubAllGlobals();
   }
 });
-it("fills step 1 from a sales forecast pasted from Excel", async () => {
-  await openDemo("/forecast");
-  await screen.findByLabelText("Paste from Excel or Google Sheets");
-  change(
-    "Paste from Excel or Google Sheets",
-    "Month\t1 kg\t500 g\t250 g\n2026-08\t800\t300\t200\n2026-09\t850\t300\t200\n2026-10\t900\t300\t200",
-  );
-  expect(await screen.findByTestId("forecast-summary")).toHaveTextContent(
-    "Next month (2026-11): about 1,150 kg",
-  );
-  fireEvent.click(
-    screen.getByRole("button", {
-      name: /Use next month's forecast in my data/,
-    }),
-  );
-  expect(
-    await screen.findByRole("heading", { name: "Your workspace" }),
-  ).toBeInTheDocument();
-  expect(screen.getByRole("region", { name: "Your data" })).toHaveTextContent(
-    "1,150 kg / month",
-  );
-});
 it("the workspace leads with Your costs and Future forecasting, and offers market research", async () => {
   await openDemo();
   expect(screen.getByRole("heading", { name: "Your costs" })).toBeVisible();
@@ -794,4 +731,20 @@ it("the workspace leads with Your costs and Future forecasting, and offers marke
   expect(await screen.findByTestId("research-costs")).toHaveTextContent(
     "€286.00 a month",
   );
+});
+it("has no Stock & orders or Sales history tools; old links open the workspace", async () => {
+  const view = await openDemo();
+  expect(screen.queryByRole("link", { name: /Stock & orders/ })).toBeNull();
+  expect(screen.queryByRole("link", { name: /Sales history/ })).toBeNull();
+  expect(
+    screen.queryByRole("button", { name: "From your sales history" }),
+  ).toBeNull();
+  view.unmount();
+  for (const path of ["/reorder", "/forecast", "/inventory"]) {
+    const again = await openDemo(path, { setup: false });
+    expect(
+      await screen.findByRole("heading", { name: "Your workspace" }),
+    ).toBeInTheDocument();
+    again.unmount();
+  }
 });

@@ -56,8 +56,6 @@ export function AccountControls({ compact = false }: { compact?: boolean }) {
 }
 
 const TOOLS = [
-  { path: "/forecast", name: "Sales history" },
-  { path: "/reorder", name: "Stock & orders" },
   { path: "/survey", name: "Customer survey" },
   { path: "/brief", name: "Decision brief" },
   { path: "/company", name: "Company profile" },

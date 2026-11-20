@@ -67,8 +67,6 @@ export const NAV: Record<string, RegExp> = {
   "/company": /Company profile/,
   "/research": /Market research/,
   "/advisor": /Market research/,
-  "/forecast": /Sales history/,
-  "/reorder": /Stock & orders/,
   "/survey": /Customer survey/,
   "/brief": /Decision brief/,
   "/data": /Edit data & costs/,
