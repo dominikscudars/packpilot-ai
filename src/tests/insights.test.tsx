@@ -15,6 +15,8 @@ import { calculatePackaging } from "../../backend/src/calculation-engine/packagi
 import { assumed } from "../../backend/src/domain/inputs";
 import { completeness, observations } from "../insights/insights";
 import { safeCell, toCsv } from "../insights/export";
+import { breakEven, vary } from "../insights/sensitivity";
+import { compareScenarios } from "../../backend/src/calculation-engine/comparison";
 
 vi.mock("recharts", () => ({
   ResponsiveContainer: ({ children }: { children: ReactNode }) => (
@@ -49,6 +51,60 @@ describe("observations and completeness", () => {
     complete.machines[0].maintenanceEuroPerMonth = assumed("0", "t");
     complete.additionalOperatingEuroPerMonth = assumed("0", "t");
     expect(completeness(complete)).toEqual([]);
+  });
+});
+
+describe("sensitivity and break-even", () => {
+  const perKg = (
+    input: ReturnType<typeof createDemoScenario>,
+    id: "material" | "labour" | "volume",
+    f: number,
+  ) => {
+    const alt = vary(input, id, f);
+    if (!alt) throw new Error("unknown");
+    return compareScenarios({
+      baseline: input,
+      alternative: alt,
+      sameProductAndDemand: id !== "volume",
+    }).differences.euroPerPlannedKg.absolute;
+  };
+  it("moves the OG TOFU cost per kg by ±10% of each driver's share", () => {
+    const input = createDemoScenario();
+    // Labour (€0.15/pack) outweighs bags and labels (€0.07/pack).
+    expect(Math.abs(Number(perKg(input, "labour", 1.1)))).toBeGreaterThan(
+      Math.abs(Number(perKg(input, "material", 1.1))),
+    );
+    expect(Number(perKg(input, "material", 0.9))).toBeLessThan(0);
+    expect(Number(perKg(input, "labour", 1.1))).toBeGreaterThan(0);
+    // The saved scenario itself is never modified.
+    expect(input).toEqual(createDemoScenario());
+  });
+  it("never treats an Unknown driver as €0", () => {
+    const input = createDemoScenario();
+    input.labor = {
+      method: "perPackage",
+      euroPerPackage: { value: null, quality: "missing" },
+    };
+    expect(vary(input, "labour", 1.1)).toBeNull();
+    input.monthlyProductionKg = { value: null, quality: "missing" };
+    expect(vary(input, "volume", 0.9)).toBeNull();
+  });
+  it("asks for investment and recurring costs before a payback threshold", () => {
+    const missing = breakEven(calculatePackaging(createDemoScenario()));
+    expect(missing.status).toBe("missing");
+    const input = createDemoScenario();
+    input.machines[0].investmentEuro = assumed("3600", "t");
+    input.machines[0].maintenanceEuroPerMonth = assumed("0", "t");
+    input.additionalOperatingEuroPerMonth = assumed("0", "t");
+    const ready = breakEven(calculatePackaging(input));
+    expect(ready).toMatchObject({
+      status: "ready",
+      rows: [
+        { months: 12, monthlySavingEuro: "300.00", savingEuroPerKg: "0.3000" },
+        { months: 24, monthlySavingEuro: "150.00" },
+        { months: 36, monthlySavingEuro: "100.00" },
+      ],
+    });
   });
 });
 
@@ -90,6 +146,21 @@ describe("Your costs decisions", () => {
     expect(
       within(missing).getAllByRole("link")[0].getAttribute("href"),
     ).toMatch(/^\/data#/);
+  });
+
+  it("shows sensitivity bars and asks for missing break-even inputs", async () => {
+    await openReference();
+    const panel = await screen.findByRole("region", {
+      name: "Sensitivity and break-even",
+    });
+    const labour = await within(panel).findByTestId("sensitivity-labour");
+    expect(labour).toHaveTextContent(/\+10%: \+€0\.0\d\d per kg/);
+    expect(
+      within(panel).getByTestId("sensitivity-material"),
+    ).toBeInTheDocument();
+    expect(within(panel).getByTestId("break-even-missing")).toHaveTextContent(
+      "Add the machine purchase price and monthly maintenance and other recurring costs (0 if none) to calculate break-even.",
+    );
   });
 
   it("compares a material change without saving it, hiding savings when costs are incomplete", async () => {

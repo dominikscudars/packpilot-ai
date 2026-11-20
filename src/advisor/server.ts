@@ -586,7 +586,9 @@ export async function handleAdvisorRequest(
   },
 ): Promise<Response> {
   if (request.method !== "POST") return fail(405, "invalid", "Use POST.");
-  if (!options.apiKey && !options.client)
+  // A key pasted into the hosting settings often carries a trailing newline.
+  const apiKey = options.apiKey?.trim();
+  if (!apiKey && !options.client)
     return fail(
       503,
       "not_configured",
@@ -624,7 +626,7 @@ export async function handleAdvisorRequest(
   const client =
     options.client ??
     new GoogleGenAI({
-      apiKey: options.apiKey,
+      apiKey,
       httpOptions: {
         timeout: 60_000,
         // Retry brief outages only: a 429 means the (free-tier) quota is
@@ -662,7 +664,11 @@ function errorResponse(e: unknown): Response {
   if (!(e instanceof ApiError))
     return fail(500, "failed", "The advisor failed unexpectedly.");
   const detail = e.message.replace(/\s+/g, " ").slice(0, 600);
-  if (e.status === 401 || e.status === 403 || /api key/i.test(e.message))
+  if (
+    e.status === 401 ||
+    e.status === 403 ||
+    /api.?key|PERMISSION_DENIED|SERVICE_DISABLED/i.test(e.message)
+  )
     return fail(
       502,
       "not_configured",
@@ -673,6 +679,13 @@ function errorResponse(e: unknown): Response {
       502,
       "not_configured",
       `The Gemini model was not found; check GEMINI_MODEL. (${detail})`,
+    );
+  // Billing, region or project setup problems: retrying will not help.
+  if (e.status === 400 && /FAILED_PRECONDITION|billing/i.test(e.message))
+    return fail(
+      502,
+      "not_configured",
+      `The Gemini project is not set up for this request; check billing and region. (${detail})`,
     );
   if (e.status === 429)
     return fail(
