@@ -1982,6 +1982,13 @@ nav + .nav-label {
   padding: 6px 8px;
   border-bottom: 1px solid var(--border);
 }
+.supplier-quotes td input {
+  width: 100%;
+  min-width: 7rem;
+}
+.supplier-quotes > button {
+  margin: 8px 8px 0 0;
+}
 @media print {
   .sidebar,
   .account-bar,

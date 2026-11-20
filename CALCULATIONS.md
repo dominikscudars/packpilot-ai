@@ -44,6 +44,18 @@ Unknown processing data produces unknown hours; per-package costs remain calcula
 
 Source: the full project README. OG TOFU reports approximately 1,000 kg/month, 2 packages/70 seconds, €0.06–0.08 bag-and-label cost/package and €0.15 labor/package. The 80% 1 kg / 15% 500 g / 5% 250 g mix and €0.07 material midpoint are assumptions. This yields 800 / 300 / 200 packages, 1,300 total, €91 material, €195 labor, €286 total and €0.286/kg. With one assumed continuously occupied worker, labor time is approximately 12.6389 hours.
 
+## Supplier quote comparison
+
+`src/calculations/supplierQuotes.ts` compares 2–3 bag-and-label quotes with the saved material cost. It uses the engine's monthly package count unchanged; one quoted price per pack applies to every pack size. Labour, machine and other costs are identical across quotes and excluded.
+
+- Quote material per month = price per pack × total packages, rounded to €0.01.
+- Material per kg = quote material per month ÷ monthly production kg, to €0.0001; Unknown at zero production.
+- Saving (−) or increase (+) = quote material per month − current total material cost; Unknown when any pack size lacks a material cost (never €0).
+- Minimum order covers = minimum order packs ÷ total packages months (one decimal); first-order cash = minimum order × price + optional setup fee.
+- Setup fee recovered in = setup fee ÷ monthly saving, only when the fee is above 0 and the quote saves money.
+
+Quotes are user-entered and unverified; VAT, delivery, storage and specification or food-contact differences are excluded. The "Load example supplier quotes" values (`src/demo/supplierQuotes.ts`) are invented for the demo, sized for about 1,300 packs a month.
+
 ## Validation and limits
 
 Numeric inputs are finite, non-negative and at most 1e12. Weights are strictly positive. Counts of packages per cycle and workers must be positive integers. Each catalog's IDs, product plans and per-product format allocations must be unique. Active references must resolve. Package counts and their aggregate must be safe integers. Extremely small weights that overflow the count are rejected.
