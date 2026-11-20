@@ -23,6 +23,11 @@ import {
   scopeKey,
   setupProblems,
 } from "../setup/setupState";
+export interface LastComparison {
+  key: string;
+  kind: string;
+  data: Awaited<ReturnType<Gateway["compare"]>>;
+}
 export interface Draft {
   id: string | null;
   name: string;
@@ -40,6 +45,11 @@ interface WorkspaceContext {
   markReviewed: () => void;
   /** Records successful setup for the saved scenario. */
   completeSetup: (saved: Draft) => void;
+  /** When the saved inputs were last saved in this workspace (ISO), if known. */
+  savedAt: string | null;
+  /** Last "Test a cost change" result, tied to the inputs it was made on. */
+  lastComparison: LastComparison | null;
+  setLastComparison: (value: LastComparison | null) => void;
   /** Unsaved data-entry draft (null = none). */
   draft: ScenarioInput | null;
   setDraft: (input: ScenarioInput | null) => void;
@@ -143,6 +153,12 @@ function LoadedWorkspace({
   // Returning demo visitors confirm their saved inputs once per session.
   const [reviewed, setReviewed] = useState(mode === "authenticated");
   const [draft, setDraftState] = useState(() => loadDraft(scope));
+  const [savedAt, setSavedAt] = useState<string | null>(() =>
+    mode === "demo" ? (loadSetupRecord(scope)?.completedAt ?? null) : null,
+  );
+  const [lastComparison, setLastComparison] = useState<LastComparison | null>(
+    null,
+  );
   const setDraft = useCallback(
     (input: ScenarioInput | null) => {
       setDraftState(input);
@@ -172,6 +188,9 @@ function LoadedWorkspace({
     },
     draft,
     setDraft,
+    savedAt,
+    lastComparison,
+    setLastComparison,
     company,
     catalog,
     baseline,
@@ -211,6 +230,7 @@ function LoadedWorkspace({
           saved,
         ],
       }));
+      setSavedAt(new Date().toISOString());
       return { id: saved.id, name: saved.name, input: saved.input };
     },
   };

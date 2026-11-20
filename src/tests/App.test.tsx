@@ -768,22 +768,23 @@ it("fills step 1 from a sales forecast pasted from Excel", async () => {
     "1,150 kg / month",
   );
 });
-it("shows the results with what-to-do-next feature cards after step 1", async () => {
+it("shows the results with next-action cards after step 1", async () => {
   await openDemo();
-  const hub = await screen.findByRole("region", {
-    name: "What you can do next",
-  });
+  const hub = await screen.findByRole("region", { name: "Next actions" });
   for (const title of [
-    "Market research",
-    "Sales forecast",
-    "Stock & orders",
-    "Customer survey",
+    "Research alternatives",
+    "Test a cost change",
+    "Plan stock",
+    "Review demand",
+    "Use customer feedback",
   ])
     expect(within(hub).getByText(title)).toBeInTheDocument();
   expect(hub).toHaveTextContent("lower your €0.286 per kg");
   expect(hub).toHaveTextContent("Your 250 g packs cost €0.88/kg to pack");
   expect(hub).toHaveTextContent("about 1,300 bags and labels a month");
-  fireEvent.click(within(hub).getByRole("link", { name: /Customer survey/ }));
+  fireEvent.click(
+    within(hub).getByRole("link", { name: /Use customer feedback/ }),
+  );
   expect(
     await screen.findByRole("heading", { name: "Customer survey" }),
   ).toBeInTheDocument();
