@@ -17,7 +17,7 @@ const sizeLabel = (grams: number) =>
 
 /** Tool: write a customer survey for Google Forms and analyse the answers. */
 export function Survey() {
-  const { baseline, catalog, company, mode } = useWorkspace();
+  const { baseline, catalog, company, mode, scope } = useWorkspace();
   const navigate = useNavigate();
   const sizes = baseline.input.formats
     .map((f) => Number(f.portionWeightGrams.value))
@@ -223,7 +223,7 @@ export function Survey() {
             <button
               type="button"
               onClick={() => {
-                saveSurvey({
+                saveSurvey(scope, {
                   responses: results.responses,
                   text: summaryText(results.responses, results.questions),
                 });

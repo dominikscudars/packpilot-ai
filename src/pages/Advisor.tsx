@@ -1,7 +1,12 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useWorkspace } from "../components/WorkspaceProvider";
 import type { AdvisorReply } from "../advisor/server";
+import {
+  snapshotId,
+  type AdvisorErrorCode,
+  type AnswerBasis,
+} from "../advisor/snapshot";
 import { ReportText } from "../components/ReportText";
 import { DataSummary } from "../components/DataSummary";
 import { useRequest } from "../components/AsyncState";
@@ -16,7 +21,8 @@ import {
 interface Turn {
   role: "user" | "assistant";
   content: string;
-  sources?: AdvisorReply["sources"];
+  sources?: { url: string; title: string; retrievedAt?: string }[];
+  basis?: AnswerBasis;
   /** A hand-researched answer shown without calling the AI service. */
   prepared?: boolean;
 }
@@ -27,18 +33,48 @@ const STARTERS = [
 ];
 
 export const ADVISOR_URL = "/api/advisor";
+/** Give up a little after the server's own limit (240 s). */
+const CLIENT_TIMEOUT_MS = 270_000;
+
+/** Plain-language explanation for each server error category. */
+function explain(code: AdvisorErrorCode | undefined, fallback: string) {
+  switch (code) {
+    case "quota":
+      return "The free AI quota is used up for now. Prepared answers below still work; try a live question again later.";
+    case "rate_limited":
+      return "Too many questions in a short time. Wait a few minutes; prepared answers still work.";
+    case "not_configured":
+      return "Live research is not set up on this site yet. Prepared answers still work.";
+    case "unavailable":
+      return "The AI service is busy or unavailable. Try again in a minute.";
+    default:
+      return fallback;
+  }
+}
 
 /** Chat with the AI advisor; every figure comes from the PackPilot engine. */
 export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
-  const { baseline, gateway } = useWorkspace();
-  const [survey, setSurvey] = useState(loadSurvey);
+  const { baseline, gateway, scope } = useWorkspace();
+  const [survey, setSurvey] = useState(() => loadSurvey(scope));
+  const snapshot = snapshotId(baseline.input);
   const costs = useRequest(JSON.stringify(baseline.input), () =>
     gateway.calculate(baseline.input),
   );
-  const [turns, setTurns] = useState<Turn[]>([]);
+  // A conversation belongs to one snapshot of the saved data and one survey.
+  const context = `${snapshot}:${survey?.text ?? ""}`;
+  const [conversation, setConversation] = useState<{
+    context: string;
+    turns: Turn[];
+  }>({ context, turns: [] });
+  const stale =
+    conversation.context !== context && conversation.turns.length > 0;
+  const turns = stale ? [] : conversation.turns;
+  const setTurns = (next: Turn[]) => setConversation({ context, turns: next });
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const controller = useRef<AbortController | null>(null);
+  useEffect(() => () => controller.current?.abort(), []);
 
   async function ask(question: string) {
     const text = question.trim();
@@ -48,9 +84,13 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
     setDraft("");
     setError("");
     setBusy(true);
+    const abort = new AbortController();
+    controller.current = abort;
+    const timer = setTimeout(() => abort.abort("timeout"), CLIENT_TIMEOUT_MS);
     try {
       const response = await fetcher(ADVISOR_URL, {
         method: "POST",
+        signal: abort.signal,
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           scenario: baseline.input,
@@ -63,21 +103,39 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
         }),
       });
       const body = (await response.json().catch(() => null)) as
-        (AdvisorReply & { error?: string }) | null;
+        (AdvisorReply & { error?: string; code?: AdvisorErrorCode }) | null;
       if (!response.ok || !body || typeof body.reply !== "string")
         throw new Error(
-          body?.error ??
-            `The advisor is unavailable (HTTP ${response.status}).`,
+          explain(
+            body?.code,
+            body?.error ??
+              `The advisor is unavailable (HTTP ${response.status}).`,
+          ),
         );
       setTurns([
         ...next,
-        { role: "assistant", content: body.reply, sources: body.sources },
+        {
+          role: "assistant",
+          content: body.reply,
+          sources: body.sources,
+          basis: body.basis,
+        },
       ]);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(
+        abort.signal.aborted
+          ? abort.signal.reason === "timeout"
+            ? "No answer within four and a half minutes. Try a narrower question."
+            : "Question cancelled. Nothing was saved."
+          : e instanceof Error
+            ? e.message
+            : String(e),
+      );
       setTurns(turns);
       setDraft(text);
     } finally {
+      clearTimeout(timer);
+      controller.current = null;
       setBusy(false);
     }
   }
@@ -144,7 +202,7 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
               type="button"
               className="link-button"
               onClick={() => {
-                clearSurvey();
+                clearSurvey(scope);
                 setSurvey(null);
               }}
             >
@@ -187,8 +245,8 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
         {turns.length === 0 && (
           <div className="advisor-starters">
             <p className="muted">
-              Live research uses the free AI quota (a few questions a day). Try
-              one of these:
+              Live research uses a limited free AI quota shared by everyone
+              using this demo. Try one of these:
             </p>
             {STARTERS.map((s) => (
               <button
@@ -202,6 +260,13 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
               </button>
             ))}
           </div>
+        )}
+        {stale && (
+          <p className="notice" data-testid="conversation-reset">
+            Your data or attached survey changed, so the earlier answers no
+            longer match it and were cleared. Ask again to research with the
+            current data.
+          </p>
         )}
         {turns.map((turn, i) => (
           <div
@@ -226,6 +291,21 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
             ) : (
               <div className="advisor-text">{turn.content}</div>
             )}
+            {turn.basis && (
+              <p className="answer-basis" data-testid="answer-basis">
+                Based on your saved data (snapshot {turn.basis.snapshotId}
+                {turn.basis.surveyAttached ? ", with customer survey" : ""}) ·{" "}
+                {turn.basis.engineCalls} PackPilot calculation
+                {turn.basis.engineCalls === 1 ? "" : "s"} ·{" "}
+                {turn.basis.researchCalls} web search
+                {turn.basis.researchCalls === 1 ? "" : "es"} · generated{" "}
+                {new Date(turn.basis.generatedAt).toLocaleString("en-GB", {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                })}{" "}
+                by {turn.basis.model}.
+              </p>
+            )}
             {turn.sources && turn.sources.length > 0 && (
               <div className="advisor-sources">
                 <span className="muted">Sources (external, unverified):</span>
@@ -243,10 +323,19 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
           </div>
         ))}
         {busy && (
-          <p className="muted" role="status">
-            Researching and testing options with PackPilot's calculations. A
-            full research answer can take one to three minutes…
-          </p>
+          <div className="advisor-busy" role="status">
+            <span className="muted">
+              Researching and testing options with PackPilot's calculations. A
+              full research answer can take one to three minutes…
+            </span>
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => controller.current?.abort("cancel")}
+            >
+              Cancel
+            </button>
+          </div>
         )}
         {error && (
           <div className="error" role="alert">

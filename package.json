@@ -12,7 +12,8 @@
     "format": "prettier --write src",
     "format:check": "prettier --check src",
     "test:integration": "node --import ./backend/node_modules/tsx/dist/loader.mjs --test scripts/frontend-api.integration.test.mjs",
-    "test:staging": "node --import ./backend/node_modules/tsx/dist/loader.mjs --test scripts/staging.integration.test.mjs"
+    "test:staging": "node --import ./backend/node_modules/tsx/dist/loader.mjs --test scripts/staging.integration.test.mjs",
+    "eval:advisor:live": "node --import ./backend/node_modules/tsx/dist/loader.mjs scripts/advisor-eval-live.mjs"
   },
   "repository": {
     "type": "git",
