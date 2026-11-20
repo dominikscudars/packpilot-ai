@@ -4,11 +4,13 @@ import type { ScenarioInput } from "../models/api";
 import { useWorkspace } from "./WorkspaceProvider";
 import { LineChart, SERIES } from "./charts";
 import { loadHistory } from "../forecast/historyStore";
+import { optimisations } from "../forecast/optimise";
 import {
   NO_CHANGE,
   capacityLimit,
   fromHistory,
   project,
+  scenarioAtEnd,
   type Assumptions,
   type Point,
 } from "../forecast/projection";
@@ -45,6 +47,8 @@ export function Forecasting({ input }: { input: ScenarioInput }) {
   const limit = capacityLimit(input, active);
   const now = active.find((p) => p.offset === 0) ?? projection[0];
   const end = active.at(-1)!;
+  const endInput =
+    mode === "history" && history ? history.endInput : scenarioAtEnd(input, a);
 
   const field = (key: keyof Assumptions, label: string, hint: string) => (
     <label className="assumption">
@@ -217,7 +221,114 @@ export function Forecasting({ input }: { input: ScenarioInput }) {
           </>
         )}
       </div>
+
+      <Optimise
+        end={endInput}
+        label={
+          (mode === "projection" || !history) &&
+          !a.productionChangePct &&
+          !a.materialChangePct &&
+          !a.labourChangePct
+            ? "Now"
+            : end.label
+        }
+      />
     </div>
+  );
+}
+
+const money = (v: number, digits = 2) =>
+  `€${v.toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits })}`;
+
+/** Concrete ways to optimise the projected period, each recalculated by the engine. */
+function Optimise({ end, label }: { end: ScenarioInput; label: string }) {
+  const { options, base } = useMemo(() => optimisations(end), [end]);
+  if (!options.length) return null;
+  const when = label === "Now" ? "today" : `for ${label}`;
+  return (
+    <section
+      className="optimise"
+      aria-labelledby="optimise-title"
+      data-testid="optimise"
+    >
+      <div className="optimise-head">
+        <h3 id="optimise-title">
+          Ways to optimise {label === "Now" ? "your costs" : `by ${label}`}
+        </h3>
+        <p>
+          Each option is recalculated on your{" "}
+          {label === "Now" ? "current" : "projected"} figures {when}
+          {base.cost !== null && (
+            <>
+              : <strong>{money(base.cost)} a month</strong>
+              {base.perKg !== null && `, ${money(base.perKg, 3)} per kg`}
+            </>
+          )}
+          .
+        </p>
+      </div>
+      <ol className="optimise-list">
+        {options.map((o, i) => {
+          const freed =
+            o.machineHours.from !== null &&
+            o.machineHours.to !== null &&
+            o.machineHours.from - o.machineHours.to > 0.05
+              ? o.machineHours.from - o.machineHours.to
+              : null;
+          return (
+            <li
+              key={o.id}
+              className="optimise-card"
+              data-testid={`option-${o.id}`}
+            >
+              <div className="optimise-badges">
+                {o.solvesCapacity && (
+                  <span className="badge badge-ok">Solves capacity</span>
+                )}
+                {i === options.findIndex((x) => (x.savingEuro ?? 0) > 0) && (
+                  <span className="badge badge-accent">Biggest saving</span>
+                )}
+              </div>
+              <h4>{o.title}</h4>
+              <div className="optimise-effect">
+                {o.savingEuro !== null && o.savingEuro > 0.004 && (
+                  <span className="effect-main">
+                    −{money(o.savingEuro)} <small>a month</small>
+                  </span>
+                )}
+                {o.euroPerKg.from !== null &&
+                  o.euroPerKg.to !== null &&
+                  o.euroPerKg.to < o.euroPerKg.from - 0.0004 && (
+                    <span>
+                      {money(o.euroPerKg.from, 3)} → {money(o.euroPerKg.to, 3)}{" "}
+                      per kg
+                    </span>
+                  )}
+                {freed !== null && <span>−{hours(freed)} machine time</span>}
+                {o.id === "capacity" && o.machineHours.from !== null && (
+                  <span>{hours(o.machineHours.from)} needed</span>
+                )}
+              </div>
+              <p className="optimise-why">{o.why}</p>
+              <p className="optimise-assumption">Assumes: {o.assumption}</p>
+              <div className="optimise-actions">
+                {o.testable && (
+                  <a href="#test-change" className="text-link">
+                    Try it in Test a cost change
+                  </a>
+                )}
+                <Link
+                  to={`/research?q=${encodeURIComponent(o.research)}`}
+                  className="text-link"
+                >
+                  Research this →
+                </Link>
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+    </section>
   );
 }
 
