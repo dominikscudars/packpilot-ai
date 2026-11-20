@@ -198,6 +198,27 @@ describe("advisor HTTP handler", () => {
     expect((await r.json()).error).toMatch(/key was rejected/);
     expect(generateContent).toHaveBeenCalledTimes(1);
   });
+  it("reports a missing or blank key as a configuration error, not an outage", async () => {
+    for (const apiKey of [undefined, "  \n"]) {
+      const r = await handleAdvisorRequest(post(ask()), { apiKey });
+      expect(r.status).toBe(503);
+      expect((await r.json()).code).toBe("not_configured");
+    }
+  });
+  it("reports billing or region setup failures as configuration errors", async () => {
+    const generateContent = vi.fn().mockRejectedValue(
+      new ApiError({
+        message:
+          '{"error":{"status":"FAILED_PRECONDITION","message":"enable billing"}}',
+        status: 400,
+      }),
+    );
+    const r = await handleAdvisorRequest(post(ask()), {
+      apiKey: undefined,
+      client: { models: { generateContent } },
+    });
+    expect((await r.json()).code).toBe("not_configured");
+  });
   it("runs Google-grounded research and returns its sources with the answer", async () => {
     const generateContent = vi
       .fn()

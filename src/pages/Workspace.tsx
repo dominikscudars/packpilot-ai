@@ -8,6 +8,7 @@ import { completeness, observations } from "../insights/insights";
 import { TestChange } from "../components/TestChange";
 import { DataSummary } from "../components/DataSummary";
 import { Forecasting } from "../components/Forecasting";
+import { Sensitivity } from "../components/Sensitivity";
 import { sizeLabel } from "../onboarding/FormSections";
 import type { PackagingCostResult, ScenarioInput } from "../models/api";
 
@@ -319,6 +320,7 @@ function Costs({
         </div>
       )}
       <Notes data={r} quiet />
+      <Sensitivity input={input} result={r} />
     </div>
   );
 }

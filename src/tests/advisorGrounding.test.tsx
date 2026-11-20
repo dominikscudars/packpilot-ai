@@ -184,6 +184,40 @@ describe("advisor grounding in the browser", () => {
     expect(screen.getByLabelText("Your question")).toHaveValue("Long question");
   });
 
+  it("shows a calm setup note and opens the examples when live AI is not configured", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        reply({ error: "no key", code: "not_configured" }, 503),
+      ),
+    );
+    await openAdvisor();
+    askQuestion("Anything");
+    expect(
+      await screen.findByText(
+        /Live AI isn't configured in this demo environment yet/,
+      ),
+    ).toHaveAttribute("role", "status");
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(document.querySelector("details.prepared")).toHaveProperty(
+      "open",
+      true,
+    );
+  });
+  it("keeps the retry message for a real outage", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        reply({ error: "overloaded", code: "unavailable" }, 502),
+      ),
+    );
+    await openAdvisor();
+    askQuestion("Anything");
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "The AI service is busy or unavailable. Try again in a minute.",
+    );
+  });
+
   it("explains a used-up quota without a fixed count and keeps prepared answers", async () => {
     vi.stubGlobal(
       "fetch",

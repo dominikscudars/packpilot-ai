@@ -41,6 +41,9 @@ export const ADVISOR_URL = "/api/advisor";
 const CLIENT_TIMEOUT_MS = 270_000;
 const NO_DATA = "no-company-data";
 
+const NOT_CONFIGURED =
+  "Live AI isn't configured in this demo environment yet — explore the verified OG TOFU research answers below.";
+
 /** Plain-language explanation for each server error category. */
 function explain(code: AdvisorErrorCode | undefined, fallback: string) {
   switch (code) {
@@ -49,7 +52,7 @@ function explain(code: AdvisorErrorCode | undefined, fallback: string) {
     case "rate_limited":
       return "Too many questions in a short time. Wait a few minutes; prepared answers still work.";
     case "not_configured":
-      return "Live research is not set up on this site yet. Prepared answers still work.";
+      return NOT_CONFIGURED;
     case "unavailable":
       return "The AI service is busy or unavailable. Try again in a minute.";
     default:
@@ -100,7 +103,13 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
   };
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setErrorState] = useState("");
+  // Opened once live AI turns out to be unconfigured; never closed for the user.
+  const [examplesOpen, setExamplesOpen] = useState(false);
+  const setError = (message: string) => {
+    setErrorState(message);
+    if (message === NOT_CONFIGURED) setExamplesOpen(true);
+  };
   const controller = useRef<AbortController | null>(null);
   useEffect(() => () => controller.current?.abort(), []);
   const older = turns.some((t) => !t.prepared && t.context !== context);
@@ -350,11 +359,17 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
               </button>
             </div>
           )}
-          {error && (
-            <div className="error" role="alert">
-              {error}
-            </div>
-          )}
+          {error &&
+            (error === NOT_CONFIGURED ? (
+              // A setup gap, not an outage: calm note instead of an error.
+              <p className="notice" role="status">
+                {error}
+              </p>
+            ) : (
+              <div className="error" role="alert">
+                {error}
+              </div>
+            ))}
         </div>
         <form
           className="chat-form"
@@ -386,7 +401,7 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
         </form>
       </section>
 
-      <details className="card prepared">
+      <details className="card prepared" open={examplesOpen}>
         <summary>Example research for a sample company (OG TOFU)</summary>
         <p className="muted">
           Answers researched on {PREPARED_DATE} for OG TOFU, a Latvian tofu

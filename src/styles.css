@@ -3665,3 +3665,70 @@ main#main {
     font-size: 14px;
   }
 }
+
+/* Sensitivity and break-even (Workspace) */
+.tornado {
+  margin: 0 0 12px;
+}
+.tornado ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+.tornado li {
+  display: grid;
+  grid-template-columns: minmax(120px, 160px) 1fr;
+  gap: 4px 12px;
+  align-items: center;
+}
+.tornado-name {
+  font-weight: 600;
+  font-size: 14.5px;
+}
+.tornado-bars {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  height: 14px;
+  background: var(--surface);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.tornado-half {
+  display: flex;
+}
+.tornado-half.left {
+  justify-content: flex-end;
+  border-right: 2px solid var(--ink-2);
+}
+.tornado-half > span {
+  display: block;
+  height: 100%;
+}
+.tornado-values {
+  grid-column: 2;
+  font-size: 13.5px;
+  font-variant-numeric: tabular-nums;
+}
+.sensitivity table,
+.break-even table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0;
+}
+.break-even th,
+.break-even td {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 560px) {
+  .tornado li {
+    grid-template-columns: 1fr;
+  }
+  .tornado-values {
+    grid-column: 1;
+  }
+}
