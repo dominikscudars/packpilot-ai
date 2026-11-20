@@ -3732,3 +3732,16 @@ main#main {
     grid-column: 1;
   }
 }
+.brand-logo {
+  display: block;
+  height: 32px;
+  width: auto;
+}
+.brand-logo-large {
+  height: 44px;
+}
+@media (max-width: 640px) {
+  .brand-logo {
+    height: 28px;
+  }
+}

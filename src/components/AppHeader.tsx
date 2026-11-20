@@ -1,18 +1,12 @@
 import { useEffect, useRef } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
-import { Icon } from "./Icon";
 import { useWorkspace } from "./WorkspaceProvider";
 import { resetDemoStorage } from "../setup/resetDemo";
 
 export function Brand() {
   return (
     <Link to="/" className="brand" aria-label="PackPilot AI home">
-      <span className="brand-mark" aria-hidden="true">
-        <Icon name="box" />
-      </span>
-      <span className="brand-name">
-        PackPilot<span className="brand-ai"> AI</span>
-      </span>
+      <img className="brand-logo" src="/logo.svg" alt="" />
     </Link>
   );
 }
