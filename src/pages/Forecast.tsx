@@ -5,6 +5,11 @@ import { parseTable } from "../survey/tabulate";
 import { buildForecast } from "../forecast/forecast";
 import { assumed } from "../../backend/src/domain/inputs";
 import { decimalText } from "../components/ApiResults";
+import {
+  clearHistory,
+  loadHistory,
+  saveHistory,
+} from "../forecast/historyStore";
 
 const sizeLabel = (grams: number) =>
   grams >= 1000 && grams % 1000 === 0 ? `${grams / 1000} kg` : `${grams} g`;
@@ -37,13 +42,15 @@ function exampleTable(sizes: number[]): string {
 
 /** Tool: paste sales history from Excel and see a six-month forecast. */
 export function Forecast() {
-  const { baseline, setBaseline, saveScenario } = useWorkspace();
+  const { baseline, setBaseline, saveScenario, scope } = useWorkspace();
+  const [stored, setStored] = useState(() => loadHistory(scope));
+  const [savedNote, setSavedNote] = useState("");
   const navigate = useNavigate();
   const formats = baseline.input.formats
     .map((f) => ({ id: f.id, grams: Number(f.portionWeightGrams.value) }))
     .filter((f) => f.grams > 0);
-  const [pasted, setPasted] = useState("");
-  const [unit, setUnit] = useState<"packs" | "kg">("packs");
+  const [pasted, setPasted] = useState(stored?.table ?? "");
+  const [unit, setUnit] = useState<"packs" | "kg">(stored?.unit ?? "packs");
   const [example, setExample] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -73,15 +80,34 @@ export function Forecast() {
 
   return (
     <>
-      <header className="page-heading">
+      <header className="page-heading page-head">
         <div>
-          <span className="eyebrow">FEATURE</span>
-          <h1>Sales forecast</h1>
+          <span className="eyebrow">Future forecasting</span>
+          <h1>Sales history</h1>
           <p>
-            Skip the typing: copy your monthly sales from Excel and paste them
-            here. PackPilot shows the trend for the next six months and can fill
-            your data with next month's production and pack mix.
+            Copy your monthly sales from Excel and paste them here. Saved
+            history is used in Future forecasting on your workspace, so the
+            forecast starts from what actually happened.
           </p>
+          {stored && (
+            <p className="muted" data-testid="history-saved">
+              Sales history saved{" "}
+              {new Date(stored.savedAt).toLocaleDateString("en-GB", {
+                dateStyle: "medium",
+              })}
+              .{" "}
+              <button
+                type="button"
+                className="link-button"
+                onClick={() => {
+                  clearHistory(scope);
+                  setStored(null);
+                }}
+              >
+                Remove it
+              </button>
+            </p>
+          )}
         </div>
       </header>
 
@@ -143,8 +169,8 @@ export function Forecast() {
         </div>
         {example && (
           <p className="notice">
-            Example data, made up to show the tool. It is not OG TOFU's real
-            sales.
+            Example data, made up to show the tool. It is not real sales and
+            cannot be saved as your history.
           </p>
         )}
         {result.unmatched.length > 0 && (
@@ -237,8 +263,36 @@ export function Forecast() {
               {error}
             </div>
           )}
+          <div className="step-actions">
+            <button
+              type="button"
+              disabled={example || result.history.length < 3}
+              onClick={() => {
+                if (saveHistory(scope, unit, pasted)) {
+                  setStored(loadHistory(scope));
+                  setSavedNote(
+                    "Saved. Future forecasting on your workspace now uses this history.",
+                  );
+                } else
+                  setSavedNote(
+                    "This browser blocked saving; the history could not be kept.",
+                  );
+              }}
+            >
+              Save as my sales history
+            </button>
+            {result.history.length < 3 && (
+              <span className="muted">At least three months are needed.</span>
+            )}
+          </div>
+          {savedNote && (
+            <p role="status" className="muted">
+              {savedNote}
+            </p>
+          )}
           <button
             type="button"
+            className="secondary"
             disabled={busy}
             onClick={async () => {
               setBusy(true);

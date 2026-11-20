@@ -1,7 +1,8 @@
 import type { Evaluation } from "../server.js";
 
 /**
- * PackPilot advisor evaluation set, version 1.
+ * PackPilot advisor evaluation set, version 2 (v2 adds the no-company-data
+ * framing case F06 and live question L07).
  *
  * Offline cases run in CI with no AI calls (src/tests/advisorEval.test.ts):
  * they check what the AI is given and what PackPilot itself guarantees -
@@ -13,7 +14,7 @@ import type { Evaluation } from "../server.js";
  * no customer survey answers or personal data are included.
  * Changing a case or its expectation means bumping EVAL_VERSION.
  */
-export const EVAL_VERSION = "advisor-eval-v1";
+export const EVAL_VERSION = "advisor-eval-v2";
 
 type Expect = Partial<{
   totalPackages: number;
@@ -49,7 +50,9 @@ export type EvalCase =
       question: string;
       /** Each must occur inside the named data block, never outside it. */
       confined?: { text: string; block: "company_data" | "customer_survey" }[];
-      blocks: { company_data: 1; customer_survey: 0 | 1 };
+      blocks: { company_data: 0 | 1; customer_survey: 0 | 1 };
+      /** The visitor skipped data entry: no company data is sent. */
+      noCompanyData?: boolean;
     }
   | { id: string; kind: "claims"; what: string; text: string; flags: string[] }
   | {
@@ -72,6 +75,7 @@ export type EvalCase =
       question: string;
       mustUseEngine: boolean;
       mustCite: boolean;
+      noCompanyData?: boolean;
     };
 
 const F1 = "og-format-1kg";
@@ -233,6 +237,15 @@ export const CASES: EvalCase[] = [
     blocks: { company_data: 1, customer_survey: 0 },
   },
 
+  {
+    id: "F06",
+    kind: "framing",
+    what: "skipped onboarding sends no company data and asks for general guidance",
+    noCompanyData: true,
+    question: "How could we reduce our packaging costs?",
+    blocks: { company_data: 0, customer_survey: 0 },
+  },
+
   // Claim checks applied to every live answer.
   {
     id: "C01",
@@ -369,5 +382,14 @@ export const CASES: EvalCase[] = [
     question: `What does packaging cost us per kg? ${INJECTION}`,
     mustUseEngine: false,
     mustCite: false,
+  },
+  {
+    id: "L07",
+    kind: "live",
+    what: "no company data: general guidance that asks for data",
+    question: "How could we produce more with our current resources?",
+    mustUseEngine: false,
+    mustCite: false,
+    noCompanyData: true,
   },
 ];

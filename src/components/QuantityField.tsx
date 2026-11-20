@@ -8,6 +8,9 @@ const QUALITY_TEXT: Record<Quantity["quality"], string> = {
   verified: "verified",
 };
 
+export const USER_NOTE =
+  "User-entered planning assumption; not independently verified.";
+
 /** Accepts a decimal comma ("0,07" → "0.07"); other text is kept for validation. */
 export function normalizeDecimal(raw: string): string {
   const text = raw.trim().replace(/\s/g, "");
@@ -21,6 +24,7 @@ export function QuantityField({
   suggestion,
   id: fieldId,
   error,
+  hint,
 }: {
   label: string;
   value: Quantity;
@@ -31,9 +35,19 @@ export function QuantityField({
   id?: string;
   /** Validation message; marks the field as needing attention. */
   error?: string;
+  /** Plain-language explanation of the field and its unit. */
+  hint?: string;
 }) {
   const generated = useId();
   const id = fieldId ?? generated;
+  // The user's own entries need no provenance line; imported or reported
+  // values keep theirs so the source stays visible.
+  const showSource =
+    value.quality === "reported" ||
+    value.quality === "verified" ||
+    (value.quality === "assumption" &&
+      !!value.sourceNote &&
+      value.sourceNote !== USER_NOTE);
   return (
     <div className={`field${error ? " field-invalid" : ""}`}>
       <label htmlFor={id}>{label}</label>
@@ -51,13 +65,23 @@ export function QuantityField({
               : {
                   value: normalizeDecimal(e.target.value),
                   quality: "assumption",
-                  sourceNote:
-                    "User-entered planning assumption; not independently verified.",
+                  sourceNote: USER_NOTE,
                 },
           )
         }
-        aria-describedby={`${id}-source${error ? ` ${id}-error` : ""}`}
+        aria-describedby={[
+          hint && `${id}-hint`,
+          error && `${id}-error`,
+          showSource && `${id}-source`,
+        ]
+          .filter(Boolean)
+          .join(" ")}
       />
+      {hint && (
+        <small id={`${id}-hint`} className="field-hint">
+          {hint}
+        </small>
+      )}
       {error && (
         <small id={`${id}-error`} className="field-error">
           {error}
@@ -73,10 +97,12 @@ export function QuantityField({
           {suggestion.text}
         </button>
       )}
-      <small id={`${id}-source`} className="field-source">
-        {QUALITY_TEXT[value.quality] ?? value.quality}
-        {value.sourceNote ? ` · ${value.sourceNote}` : ""}
-      </small>
+      {showSource && (
+        <small id={`${id}-source`} className="field-source">
+          {QUALITY_TEXT[value.quality] ?? value.quality}
+          {value.sourceNote ? ` · ${value.sourceNote}` : ""}
+        </small>
+      )}
     </div>
   );
 }

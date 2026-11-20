@@ -1,6 +1,7 @@
 import { vi } from "vitest";
 import type { AuthPort, Identity } from "../auth/session";
 import { createDemoGateway } from "../demo/apiDemo";
+import { ogTofuStore } from "./ogTofuCompany";
 import type { Resources } from "../models/api";
 export function authFixture(
   initial: Identity | null = { userId: "user-a", accessToken: "access-a" },
@@ -34,7 +35,8 @@ export const json = (data: unknown, status = 200) =>
   );
 export function apiFixture() {
   const demo = createDemoGateway(
-    { getItem: () => null, setItem: () => {} },
+    // The signed-in company already has its reference data saved.
+    { getItem: () => JSON.stringify(ogTofuStore()), setItem: () => {} },
     () => {},
   );
   const fetcher = vi.fn<typeof fetch>(async (url, options) => {

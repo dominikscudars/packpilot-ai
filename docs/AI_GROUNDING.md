@@ -23,9 +23,9 @@ How PackPilot's market-research advisor stays tied to the company's own data. It
 - ≤ 3 web searches and ≤ 12 model steps per question.
 - At most 6 questions per 10 minutes from one address. This is counted separately in each warm serverless instance, so it is best-effort abuse protection, not billing control. A shared limit across instances would need a store such as Redis.
 
-## Evaluation set (`advisor-eval-v1`)
+## Evaluation set (`advisor-eval-v2`)
 
-`src/advisor/evals/cases.v1.ts`: 26 offline cases plus 6 live questions. They use only the OG TOFU demo scenario already in the repository; no survey answers or personal data.
+`src/advisor/evals/cases.v1.ts`: 27 offline cases plus 7 live questions. They use only the OG TOFU demo scenario already in the repository; no survey answers or personal data.
 
 | Kind                  | Cases   | Checks                                                                                                                                      |
 | --------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------- |

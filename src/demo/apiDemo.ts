@@ -9,8 +9,6 @@ import {
   supplierSchema,
 } from "../../backend/src/domain/entities";
 import { savedScenarioSchema } from "../../backend/src/domain/scenario";
-import { reported } from "../../backend/src/domain/inputs";
-import { createDemoScenario } from "../../backend/src/domain/demo";
 import { calculatePackaging } from "../../backend/src/calculation-engine/packaging";
 import { compareScenarios } from "../../backend/src/calculation-engine/comparison";
 import { planInventory } from "../../backend/src/calculation-engine/inventory";
@@ -21,9 +19,14 @@ import type {
   RecordOf,
   Resources,
 } from "../models/api";
-export const DEMO_KEY = "packpilot.demo.v2";
-/** Name of the built-in example scenario a visitor has not replaced yet. */
-export const DEMO_REFERENCE_NAME = "Illustrative OG TOFU reference";
+/**
+ * Browser storage key for the local demo. Version 3 starts empty: earlier
+ * versions came prefilled with OG TOFU's figures and are never read back.
+ */
+export const DEMO_KEY = "packpilot.demo.v3";
+/** Older demo keys, removed by "Reset demo" and otherwise ignored. */
+export const LEGACY_DEMO_KEYS = ["packpilot.demo.v2"];
+export const DEMO_COMPANY_ID = "demo-company";
 const metadata = { id: z.string(), companyId: z.string() };
 const schemas = {
   products: productSchema,
@@ -49,78 +52,24 @@ const storeSchema = z.object({
     scenarios: savedScenarioSchema.extend(metadata).array(),
   }),
 });
+/** A new demo workspace holds no company data: the visitor enters their own. */
 function initial(): { company: CompanyRecord; catalog: Catalog } {
-  const companyId = "og-tofu";
-  const input = createDemoScenario();
   return {
     company: {
-      id: companyId,
-      name: "OG TOFU",
-      country: "Latvia",
-      industryCategory: "Plant-based food manufacturing",
+      id: DEMO_COMPANY_ID,
+      name: "Demo company",
+      country: null,
+      industryCategory: null,
       membershipRole: "owner",
     },
     catalog: {
-      products: [
-        {
-          id: "og-fresh-tofu",
-          companyId,
-          ...productSchema.parse({
-            name: "Fresh tofu",
-            shelfLifeDays: reported(
-              "10",
-              "Approximate reported shelf life; not independently validated.",
-            ),
-            shelfLifeNote:
-              "No shelf-life or food safety certification is implied.",
-            storageRequirements:
-              "Reported refrigeration at approximately +2°C to +6°C.",
-          }),
-        },
-      ],
-      materials: [
-        {
-          id: "og-pape",
-          companyId,
-          ...materialSchema.parse({
-            name: "PA/PE vacuum packaging",
-            structure: "PA/PE",
-          }),
-        },
-      ],
-      machines: input.machines.map(({ id, ...m }) => ({
-        id,
-        companyId,
-        ...machineSchema.parse({ ...m, model: "HURAKAN VAC 400" }),
-      })),
-      formats: input.formats.map((f) => ({
-        id: f.id,
-        companyId,
-        ...formatSchema.parse({
-          productId: "og-fresh-tofu",
-          materialId: "og-pape",
-          portionWeightGrams: f.portionWeightGrams,
-          materialCost: f.materialCost,
-          commercialStatus: "illustrative",
-        }),
-      })),
-      inventory: [
-        {
-          id: "og-stock-pape",
-          companyId,
-          ...inventoryRecordSchema.parse({ materialId: "og-pape" }),
-        },
-      ],
+      products: [],
+      materials: [],
+      formats: [],
+      machines: [],
+      inventory: [],
       suppliers: [],
-      scenarios: [
-        {
-          id: "og-demo-scenario",
-          companyId,
-          name: DEMO_REFERENCE_NAME,
-          kind: "modeled",
-          input,
-        },
-      ],
+      scenarios: [],
     },
   };
 }

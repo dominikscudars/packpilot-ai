@@ -27,7 +27,8 @@ export type AdvisorErrorCode =
 
 /** Where an answer came from; shown under each live answer. */
 export interface AnswerBasis {
-  snapshotId: string;
+  /** null when the visitor has not entered company data. */
+  snapshotId: string | null;
   model: string;
   generatedAt: string;
   surveyAttached: boolean;

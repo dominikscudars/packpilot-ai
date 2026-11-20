@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import type { ReactNode } from "react";
 import App from "../App";
 import type { AppServices } from "../components/AuthGate";
 import { authFixture, apiFixture, json } from "./integrationFixture";
-import { DEMO_KEY } from "../demo/apiDemo";
+import { DEMO_COMPANY_ID, DEMO_KEY } from "../demo/apiDemo";
+import { enterReferenceData, navLink } from "./journey";
 import { createDemoScenario } from "../../backend/src/domain/demo";
 import { assumed, missing } from "../../backend/src/domain/inputs";
 import {
@@ -48,22 +49,7 @@ async function openDemo(path = "/") {
 }
 const change = (label: string, value: string) =>
   fireEvent.change(screen.getByLabelText(label), { target: { value } });
-async function completeOgSetup() {
-  fireEvent.click(
-    await screen.findByRole("button", {
-      name: "Fill everything with OG TOFU data",
-    }),
-  );
-  fireEvent.click(
-    screen.getByRole("button", { name: "View packaging insights" }),
-  );
-  await screen.findByRole("heading", { name: "Packaging Insights" });
-}
-const navLink = (name: RegExp) =>
-  within(screen.getByRole("navigation", { name: "Main navigation" })).getByRole(
-    "link",
-    { name },
-  );
+const completeOgSetup = () => enterReferenceData();
 
 describe("onboarding gate", () => {
   it.each([
@@ -81,9 +67,13 @@ describe("onboarding gate", () => {
     expect(
       await screen.findByRole("heading", { name: "Enter your data" }),
     ).toBeInTheDocument();
-    expect(screen.queryByRole("navigation", { name: "Features" })).toBeNull();
+    // Full screen: no workspace navigation, results or research tools.
+    expect(
+      screen.queryByRole("navigation", { name: "Main navigation" }),
+    ).toBeNull();
     expect(screen.queryByTestId("operating-cost")).toBeNull();
-    expect(screen.queryByText("What you can do next")).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Your costs" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Skip for now" })).toBeEnabled();
     // Leaving stays possible: Exit demo and Reset demo remain.
     expect(screen.getByRole("button", { name: "Exit demo" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Reset demo" })).toBeEnabled();
@@ -99,14 +89,16 @@ describe("onboarding gate", () => {
     localStorage.setItem(
       "packpilot.setup.v1",
       JSON.stringify({
-        [scopeKey("demo", null, "og-tofu")]: {
+        [scopeKey("demo", null, DEMO_COMPANY_ID)]: {
           version: 1,
           scenarioId: "missing-scenario",
           completedAt: "2026-11-19T00:00:00Z",
         },
       }),
     );
-    expect(loadSetupRecord(scopeKey("demo", null, "og-tofu"))).not.toBeNull();
+    expect(
+      loadSetupRecord(scopeKey("demo", null, DEMO_COMPANY_ID)),
+    ).not.toBeNull();
   });
 
   it("keeps working when browser storage is blocked", async () => {
@@ -144,21 +136,31 @@ describe("onboarding gate", () => {
       fetcher,
     });
     await screen.findByRole("heading", { name: "Enter your data" });
-    // Signed-in companies have no OG TOFU fill buttons: type the values.
+    // The company's own pack-size records start the form; keep only one.
+    for (const n of [3, 2])
+      fireEvent.click(
+        screen.getByRole("button", { name: `Remove pack size ${n}` }),
+      );
     change("How many kilograms do you produce per month?", "1000");
     change("Pack weight (g) · pack size 1", "1000");
     change("Share of production (%) · pack size 1", "100");
-    fireEvent.click(
-      screen.getByRole("button", { name: "View packaging insights" }),
-    );
+    for (const next of ["Packaging materials", "Labour & capacity", "Review"]) {
+      fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+      await screen.findByRole("heading", { name: next });
+    }
+    fireEvent.click(screen.getByRole("button", { name: "Show my workspace" }));
     expect(await screen.findByText(/Saving failed/)).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "Enter your data" }),
     ).toBeInTheDocument();
+    // The answers stay; going back to step 1 shows them unchanged.
+    fireEvent.click(screen.getByRole("button", { name: "Edit Production" }));
     expect(
       screen.getByLabelText("How many kilograms do you produce per month?"),
     ).toHaveValue("1000");
-    expect(screen.queryByRole("navigation", { name: "Features" })).toBeNull();
+    expect(
+      screen.queryByRole("navigation", { name: "Main navigation" }),
+    ).toBeNull();
   });
 });
 
@@ -176,7 +178,7 @@ describe("edit data & costs loop", () => {
     await screen.findByRole("heading", { name: "Edit data & costs" });
     change("Bag and label cost (€ per pack) · pack size 1", "0.08");
     fireEvent.click(
-      screen.getByRole("button", { name: "Save changes & update insights" }),
+      screen.getByRole("button", { name: "Save changes & update costs" }),
     );
     expect(await screen.findByTestId("operating-cost")).toHaveTextContent(
       "€294.00",
@@ -186,7 +188,7 @@ describe("edit data & costs loop", () => {
     fireEvent.click(navLink(/Edit data & costs/));
     change("Bag and label cost (€ per pack) · pack size 1", "0.07");
     fireEvent.click(
-      screen.getByRole("button", { name: "Save changes & update insights" }),
+      screen.getByRole("button", { name: "Save changes & update costs" }),
     );
     expect(await screen.findByTestId("operating-cost")).toHaveTextContent(
       "€286.00",
@@ -195,7 +197,7 @@ describe("edit data & costs loop", () => {
     // An unsaved draft survives navigation, and Discard restores the saved value.
     fireEvent.click(navLink(/Edit data & costs/));
     change("How many kilograms do you produce per month?", "2000");
-    fireEvent.click(navLink(/Packaging Insights/));
+    fireEvent.click(navLink(/Workspace/));
     expect(await screen.findByTestId("operating-cost")).toHaveTextContent(
       "€286.00",
     );
@@ -258,8 +260,10 @@ describe("setup rules", () => {
     expect(setupProblems(dup).map((p) => p.field)).toContain("field-formats");
   });
   it("scopes readiness by mode, user and company", () => {
-    saveSetupRecord(scopeKey("demo", null, "og-tofu"), "s1");
-    expect(loadSetupRecord(scopeKey("demo", null, "og-tofu"))).not.toBeNull();
+    saveSetupRecord(scopeKey("demo", null, DEMO_COMPANY_ID), "s1");
+    expect(
+      loadSetupRecord(scopeKey("demo", null, DEMO_COMPANY_ID)),
+    ).not.toBeNull();
     expect(loadSetupRecord(scopeKey("demo", null, "other"))).toBeNull();
     expect(
       loadSetupRecord(scopeKey("authenticated", "user-a", "og-tofu")),

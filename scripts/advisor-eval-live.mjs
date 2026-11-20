@@ -29,7 +29,7 @@ for (const c of cases) {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        scenario: createDemoScenario(),
+        ...(c.noCompanyData ? {} : { scenario: createDemoScenario() }),
         messages: [{ role: "user", content: c.question }],
       }),
     }),

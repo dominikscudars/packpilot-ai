@@ -1,10 +1,17 @@
-import { DEMO_KEY } from "../demo/apiDemo";
+import { DEMO_KEY, LEGACY_DEMO_KEYS } from "../demo/apiDemo";
 import { clearSetupRecords } from "./setupState";
 
 /** Browser keys the local demo writes; cleared together by "Reset demo". */
-const DEMO_LOCAL_KEYS = [DEMO_KEY, "packpilot.reorder.v1"];
-const DEMO_LOCAL_PREFIXES = ["packpilot.reorder.v1:demo:"];
-const DEMO_SESSION_PREFIXES = ["packpilot.draft.v1:demo:", "packpilot.survey"];
+const DEMO_LOCAL_KEYS = [DEMO_KEY, ...LEGACY_DEMO_KEYS, "packpilot.reorder.v1"];
+const DEMO_LOCAL_PREFIXES = [
+  "packpilot.reorder.v1:demo:",
+  "packpilot.history.v1:demo:",
+];
+const DEMO_SESSION_PREFIXES = [
+  "packpilot.draft.v1:demo:",
+  "packpilot.survey.v1:demo:",
+  "packpilot.research.v1:demo:",
+];
 
 /** Clears demo data, setup readiness and drafts. Signed-in data is untouched. */
 export function resetDemoStorage() {
