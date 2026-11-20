@@ -58,8 +58,15 @@ describe("framing cases", () => {
   it.each(of("framing").map((c) => [c.id, c] as const))("%s", (_, c) => {
     const scenario = createDemoScenario();
     if (c.sourceNote) scenario.monthlyProductionKg.sourceNote = c.sourceNote;
-    const prompt = framedQuestion(scenario, c.question, c.survey);
-    expect(prompt).toContain(`Snapshot ${snapshotId(scenario)}`);
+    const prompt = framedQuestion(
+      c.noCompanyData ? undefined : scenario,
+      c.question,
+      c.survey,
+    );
+    if (c.noCompanyData) {
+      expect(prompt).not.toContain("Snapshot");
+      expect(prompt).toMatch(/general guidance/i);
+    } else expect(prompt).toContain(`Snapshot ${snapshotId(scenario)}`);
     expect(prompt.endsWith(`Question: ${c.question}`)).toBe(true);
     for (const block of ["company_data", "customer_survey"] as const) {
       expect(count(prompt, `<${block}>`)).toBe(c.blocks[block]);

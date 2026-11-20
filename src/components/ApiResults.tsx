@@ -17,7 +17,10 @@ export const money = (value: string | null, digits = 2) =>
   value === null ? "Unknown" : `€${decimalText(value, digits)}`;
 export function Notes({
   data,
+  quiet = false,
 }: {
+  /** Hide setup guidance when the page lists missing inputs itself. */
+  quiet?: boolean;
   data: {
     warnings: string[];
     assumptions: string[];
@@ -41,7 +44,9 @@ export function Notes({
               {n.text}
             </p>
           ))}
-        {steps.length > 0 && <Guidance items={steps.map((n) => n.text)} />}
+        {!quiet && steps.length > 0 && (
+          <Guidance items={steps.map((n) => n.text)} />
+        )}
       </div>
       <details className="panel result-notes">
         <summary>How we calculated this: assumptions and open inputs</summary>

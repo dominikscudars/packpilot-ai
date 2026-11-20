@@ -43,7 +43,13 @@ export function AuthGate({
   const acceptSession = useRef(true);
   const [session, setSession] = useState<Identity | null>(null);
   const [loading, setLoading] = useState(!!config.auth);
-  const [demo, setDemo] = useState(false);
+  const [demo, setDemoState] = useState(readDemoChoice);
+  // The demo choice lasts for this tab, so a refresh or a direct link
+  // returns to the same workspace and onboarding state.
+  const setDemo = (on: boolean) => {
+    setDemoState(on);
+    writeDemoChoice(on);
+  };
   const [error, setError] = useState(config.error || "");
   const [signOutFailed, setSignOutFailed] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -338,8 +344,8 @@ export function AuthGate({
         <hr />
         <h2>Explore the local demo</h2>
         <p>
-          The hypothetical OG TOFU example stays in this browser. Browser
-          profiles are never automatically uploaded.
+          Try PackPilot with your own numbers. Everything you enter stays in
+          this browser and is never uploaded.
         </p>
         <button
           className="secondary"
@@ -361,4 +367,21 @@ export function AuthGate({
       </section>
     </main>
   );
+}
+
+const DEMO_CHOICE = "packpilot.demo-open.v1";
+function readDemoChoice(): boolean {
+  try {
+    return sessionStorage.getItem(DEMO_CHOICE) === "1";
+  } catch {
+    return false;
+  }
+}
+function writeDemoChoice(on: boolean) {
+  try {
+    if (on) sessionStorage.setItem(DEMO_CHOICE, "1");
+    else sessionStorage.removeItem(DEMO_CHOICE);
+  } catch {
+    // Storage blocked: the demo lasts until the page is reloaded.
+  }
 }

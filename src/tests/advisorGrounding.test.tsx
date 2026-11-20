@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import type { ReactNode } from "react";
 import App from "../App";
 import { scopeKey } from "../setup/setupState";
+import { DEMO_COMPANY_ID } from "../demo/apiDemo";
+import { enterReferenceData, navLink } from "./journey";
 
 vi.mock("recharts", () => ({
   ResponsiveContainer: ({ children }: { children: ReactNode }) => (
@@ -20,7 +22,7 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllGlobals());
 
-const SCOPE = scopeKey("demo", null, "og-tofu");
+const SCOPE = scopeKey("demo", null, DEMO_COMPANY_ID);
 const survey = (responses: number) =>
   JSON.stringify({ responses, text: `Survey: ${responses} responses` });
 const reply = (body: unknown, status = 200) =>
@@ -46,16 +48,8 @@ async function openAdvisor() {
     </MemoryRouter>,
   );
   fireEvent.click(screen.getByRole("button", { name: "Open local demo" }));
-  fireEvent.click(
-    await screen.findByRole("button", {
-      name: "Fill everything with OG TOFU data",
-    }),
-  );
-  fireEvent.click(
-    screen.getByRole("button", { name: "View packaging insights" }),
-  );
-  await screen.findByRole("heading", { name: "Packaging Insights" });
-  fireEvent.click(screen.getAllByRole("link", { name: /Market research/ })[0]);
+  await enterReferenceData();
+  fireEvent.click(navLink(/Market research/));
   await screen.findByRole("heading", { name: "Market research" });
 }
 const askQuestion = (text: string) => {
@@ -97,18 +91,70 @@ describe("advisor grounding in the browser", () => {
     expect(screen.getByText(/Sources \(external, unverified\)/)).toBeVisible();
   });
 
-  it("clears the conversation when the attached survey changes", async () => {
+  it("marks answers based on older data and stops sending them", async () => {
     sessionStorage.setItem("packpilot.survey.v1:" + SCOPE, survey(5));
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => reply({ reply: "Offer 250 g.", sources: [], basis })),
+    const fetchMock = vi.fn(async () =>
+      reply({ reply: "Offer 250 g.", sources: [], basis }),
     );
+    vi.stubGlobal("fetch", fetchMock);
     await openAdvisor();
     askQuestion("Which sizes?");
     await screen.findByText("Offer 250 g.");
+    expect(screen.queryByTestId("older-data")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Remove" }));
-    expect(screen.getByTestId("conversation-reset")).toBeInTheDocument();
-    expect(screen.queryByText("Offer 250 g.")).toBeNull();
+    // The earlier answer stays visible, clearly marked.
+    expect(screen.getByText("Offer 250 g.")).toBeInTheDocument();
+    expect(screen.getAllByTestId("older-data").length).toBe(2);
+    expect(screen.getByTestId("older-data-notice")).toBeInTheDocument();
+    askQuestion("And now?");
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    const sent = JSON.parse(
+      String(
+        (fetchMock.mock.calls[1] as unknown as [string, RequestInit])[1].body,
+      ),
+    );
+    expect(sent.messages).toEqual([{ role: "user", content: "And now?" }]);
+    expect(sent.context).toBeUndefined();
+  });
+
+  it("gives general guidance without company data after skipping", async () => {
+    const fetchMock = vi.fn(async () =>
+      reply({
+        reply: "General advice.",
+        sources: [],
+        basis: { ...basis, snapshotId: null, surveyAttached: false },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    render(
+      <MemoryRouter initialEntries={["/research"]}>
+        <App
+          services={{
+            auth: null,
+            apiUrl: "http://localhost:3001",
+            error: null,
+          }}
+        />
+      </MemoryRouter>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Open local demo" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Skip for now" }),
+    );
+    fireEvent.click(navLink(/Market research/));
+    expect(await screen.findByTestId("general-guidance")).toHaveTextContent(
+      "Tailored recommendations",
+    );
+    askQuestion("How could we produce more?");
+    expect(await screen.findByTestId("answer-basis")).toHaveTextContent(
+      "General guidance without company data",
+    );
+    const sent = JSON.parse(
+      String(
+        (fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body,
+      ),
+    );
+    expect(sent.scenario).toBeUndefined();
   });
 
   it("can cancel a running question and keeps the draft", async () => {

@@ -14,6 +14,7 @@ import App from "../App";
 import type { AppServices } from "../components/AuthGate";
 import { authFixture, apiFixture, json } from "./integrationFixture";
 import { DEMO_KEY } from "../demo/apiDemo";
+import { NAV, enterReferenceData, navLink } from "./journey";
 vi.mock("recharts", () => ({
   ResponsiveContainer: ({ children }: { children: ReactNode }) => (
     <div>{children}</div>
@@ -37,56 +38,25 @@ function mount(path = "/", services: AppServices = demoConfig) {
     </StrictMode>,
   );
 }
-/** Step 1: fill every field with OG TOFU's data and save (lands on step 2). */
-/** Setup: fill every field with OG TOFU's data and view Packaging Insights. */
-async function enterOgData() {
-  fireEvent.click(
-    await screen.findByRole("button", {
-      name: "Fill everything with OG TOFU data",
-    }),
-  );
-  fireEvent.click(
-    screen.getByRole("button", { name: "View packaging insights" }),
-  );
-  await screen.findByRole("heading", { name: "Packaging Insights" });
-}
-const NAV: Record<string, RegExp> = {
-  "/company": /Company profile/,
-  "/advisor": /Market research/,
-  "/forecast": /Sales forecast/,
-  "/reorder": /Stock & orders/,
-  "/survey": /Customer survey/,
-  "/data": /Edit data & costs/,
-};
 /**
- * Opens the demo. A fresh demo shows the setup screen at every address, so by
- * default setup is completed with OG TOFU data (or saved inputs are
- * confirmed) and the requested page is then opened from the navigation.
+ * Opens the demo. A first visit shows only the full-screen data entry at
+ * every address, so by default the visitor types OG TOFU's reference data,
+ * then the requested page is opened from the navigation.
  */
 async function openDemo(path = "/", { setup = true } = {}) {
   const view = mount(path);
-  fireEvent.click(screen.getByRole("button", { name: "Open local demo" }));
+  // After a refresh in the same tab the demo opens directly.
+  const open = screen.queryByRole("button", { name: "Open local demo" });
+  if (open) fireEvent.click(open);
   await screen.findByLabelText("Active company");
   if (!setup) return view;
-  const heading = await screen.findByRole("heading", {
-    name: /Enter your data|Review your saved inputs|Packaging Insights/,
+  const first = await screen.findByRole("heading", {
+    name: /^(Enter your data|Your workspace)$/,
   });
-  if (heading.textContent === "Enter your data") await enterOgData();
-  else if (heading.textContent === "Review your saved inputs") {
-    fireEvent.click(
-      screen.getByRole("button", { name: /Continue to Packaging Insights/ }),
-    );
-    await screen.findByRole("heading", { name: "Packaging Insights" });
-  }
+  if (first.textContent === "Enter your data") await enterReferenceData();
+  else await screen.findByTestId("operating-cost");
   const link = NAV[path];
-  if (link) {
-    const navs = await screen.findAllByRole("navigation");
-    const target = navs
-      .flatMap((nav) => within(nav).queryAllByRole("link", { name: link }))
-      .at(0);
-    if (!target) throw new Error(`No navigation link for ${path}`);
-    fireEvent.click(target);
-  }
+  if (link) fireEvent.click(navLink(link));
   return view;
 }
 const change = (label: string, value: string) =>
@@ -109,52 +79,49 @@ it("requires explicit demo entry, preserves exact reference results and persists
   expect(screen.getByTestId("cost-per-kg")).toHaveTextContent("€0.286");
   expect(screen.getByTestId("total-packages")).toHaveTextContent("1,300");
   for (const [format, count, total, perKg] of [
-    ["1000 g", "800", "€176.00", "€0.220"],
+    ["1 kg", "800", "€176.00", "€0.220"],
     ["500 g", "300", "€66.00", "€0.440"],
     ["250 g", "200", "€44.00", "€0.880"],
   ]) {
     const row = screen.getByRole("rowheader", { name: format }).closest("tr");
     if (!row) throw new Error("Packaging row missing");
     const cells = within(row).getAllByRole("cell");
-    expect(cells[2].textContent).toBe(count);
-    expect(cells[3].textContent).toBe(perKg);
-    expect(cells[6].textContent).toBe(total);
+    expect(cells[1].textContent).toBe(count);
+    expect(cells[2].textContent).toBe(perKg);
+    expect(cells[5].textContent).toBe(total);
   }
-  change("Monthly production (kg)", "2000");
-  expect(screen.queryByTestId("operating-cost")).toBeNull();
+  fireEvent.click(navLink(/Edit data & costs/));
+  change("How many kilograms do you produce per month?", "2000");
+  // The 2000 kg edit is not stored until it is saved explicitly.
+  expect(localStorage.getItem(DEMO_KEY) ?? "").not.toContain('"2000"');
+  fireEvent.click(
+    screen.getByRole("button", { name: "Save changes & update costs" }),
+  );
   await waitFor(() =>
     expect(screen.getByTestId("operating-cost")).toHaveTextContent("€572.00"),
   );
-  // The 2000 kg edit is not stored until it is saved explicitly.
-  expect(localStorage.getItem(DEMO_KEY) ?? "").not.toContain('"2000"');
-  fireEvent.click(screen.getByRole("button", { name: "Save scenario" }));
-  await screen.findByText("Scenario saved in this browser.");
+  expect(localStorage.getItem(DEMO_KEY)).toContain('"2000"');
+  // A refresh returns straight to the workspace with the saved data.
   view.unmount();
   await openDemo();
-  expect(await screen.findByLabelText("Monthly production (kg)")).toHaveValue(
-    "2000",
-  );
   expect(await screen.findByTestId("operating-cost")).toHaveTextContent(
     "€572.00",
   );
 });
-/** Incomplete input shows the calm setup card, never the red error alert. */
-async function expectGuidance(text: RegExp) {
-  await waitFor(() =>
-    expect(screen.getByText(/setup guidance/i).parentElement).toHaveTextContent(
-      text,
-    ),
-  );
-  expect(screen.queryByRole("alert")).toBeNull();
-}
-it("hides old results immediately when production becomes missing or invalid", async () => {
-  await openDemo();
-  await screen.findByTestId("operating-cost");
-  change("Monthly production (kg)", "");
-  expect(screen.queryByTestId("operating-cost")).toBeNull();
-  await expectGuidance(/add monthly production.*see your results/i);
-  change("Monthly production (kg)", "-1");
-  await expectGuidance(/non-negative/);
+it("never saves or shows results for missing or invalid production", async () => {
+  await openDemo("/data");
+  await screen.findByRole("heading", { name: "Edit data & costs" });
+  for (const value of ["", "-1"]) {
+    change("How many kilograms do you produce per month?", value);
+    fireEvent.click(
+      screen.getByRole("button", { name: "Save changes & update costs" }),
+    );
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /Monthly production|how many kilograms/i,
+    );
+    expect(screen.queryByTestId("operating-cost")).toBeNull();
+  }
+  expect(localStorage.getItem(DEMO_KEY) ?? "").not.toContain('"-1"');
 });
 it("saves company and product changes explicitly", async () => {
   await openDemo("/company");
@@ -167,12 +134,11 @@ it("saves company and product changes explicitly", async () => {
   expect(JSON.parse(localStorage.getItem(DEMO_KEY)!).company.name).toBe(
     "Edited pilot",
   );
-  change("Product name", "Edited tofu");
-  fireEvent.click(screen.getByRole("button", { name: "Save product" }));
-  await screen.findByText("Product saved.");
-  expect(
-    JSON.parse(localStorage.getItem(DEMO_KEY)!).catalog.products[0].name,
-  ).toBe("Edited tofu");
+  // The demo starts empty: no sample products are shown as the visitor's.
+  expect(screen.queryByLabelText("Product name")).toBeNull();
+  expect(JSON.parse(localStorage.getItem(DEMO_KEY)!).catalog.products).toEqual(
+    [],
+  );
 });
 it("signs in, uses bearer tokens and API results, and never uploads legacy browser profiles", async () => {
   localStorage.setItem(
@@ -242,16 +208,30 @@ it("loads profiles and saves scenarios through company-scoped endpoints", async 
         String(init.body).includes("API company"),
     ),
   ).toBe(true);
-  fireEvent.click(screen.getByRole("link", { name: /Packaging Insights/ }));
-  await screen.findByLabelText("Monthly production (kg)");
-  change("Monthly production (kg)", "2000");
-  fireEvent.click(screen.getByRole("button", { name: "Save as new scenario" }));
-  await screen.findByText("Scenario saved to your company.");
+  change("Product name", "Edited tofu");
+  fireEvent.click(screen.getByRole("button", { name: "Save product" }));
+  await screen.findByText("Product saved.");
   expect(
     fetcher.mock.calls.some(
       ([url, init]) =>
-        String(url).endsWith("/companies/og-tofu/scenarios") &&
-        init?.method === "POST" &&
+        String(url).includes("/companies/og-tofu/products/") &&
+        init?.method === "PATCH" &&
+        String(init.body).includes("Edited tofu"),
+    ),
+  ).toBe(true);
+  fireEvent.click(navLink(/Edit data & costs/));
+  change("How many kilograms do you produce per month?", "2000");
+  fireEvent.click(
+    screen.getByRole("button", { name: "Save changes & update costs" }),
+  );
+  await waitFor(() =>
+    expect(screen.getByTestId("operating-cost")).toHaveTextContent("€572.00"),
+  );
+  expect(
+    fetcher.mock.calls.some(
+      ([url, init]) =>
+        String(url).includes("/companies/og-tofu/scenarios/") &&
+        init?.method === "PATCH" &&
         String(init.body).includes("2000"),
     ),
   ).toBe(true);
@@ -286,9 +266,13 @@ it("clears data on rejected refresh and keeps an expired session signed out", as
     { fetcher } = apiFixture();
   mount("/", { auth, apiUrl: "http://localhost:3001", error: null, fetcher });
   await screen.findByTestId("operating-cost");
+  fireEvent.click(navLink(/Edit data & costs/));
   fetcher.mockImplementation(async () => json("Expired", 401));
   vi.mocked(auth.refresh).mockResolvedValue(null);
-  change("Monthly production (kg)", "2000");
+  change("How many kilograms do you produce per month?", "2000");
+  fireEvent.click(
+    screen.getByRole("button", { name: "Save changes & update costs" }),
+  );
   expect(await screen.findByRole("alert")).toHaveTextContent(
     "Your session expired",
   );
@@ -491,10 +475,17 @@ it("does not let a save from an unmounted editor overwrite a newer draft", async
       await delayed;
     return normal(url, init);
   });
-  mount("/", { auth, apiUrl: "http://localhost:3001", error: null, fetcher });
-  await screen.findByLabelText("Monthly production (kg)");
-  change("Monthly production (kg)", "2000");
-  fireEvent.click(screen.getByRole("button", { name: "Save scenario" }));
+  mount("/data", {
+    auth,
+    apiUrl: "http://localhost:3001",
+    error: null,
+    fetcher,
+  });
+  await screen.findByRole("heading", { name: "Edit data & costs" });
+  change("How many kilograms do you produce per month?", "2000");
+  fireEvent.click(
+    screen.getByRole("button", { name: "Save changes & update costs" }),
+  );
   await waitFor(() =>
     expect(
       fetcher.mock.calls.some(
@@ -503,81 +494,82 @@ it("does not let a save from an unmounted editor overwrite a newer draft", async
       ),
     ).toBe(true),
   );
-  fireEvent.click(screen.getByRole("link", { name: /Company profile/ }));
+  fireEvent.click(navLink(/Company profile/));
   await screen.findByLabelText("Company name");
-  fireEvent.click(screen.getByRole("link", { name: /Packaging Insights/ }));
-  change("Monthly production (kg)", "3000");
+  fireEvent.click(navLink(/Edit data & costs/));
+  change("How many kilograms do you produce per month?", "3000");
   await act(async () => {
     release();
     await delayed;
   });
+  // The late save neither clears the newer draft nor navigates away.
   await waitFor(() =>
-    expect(screen.getByLabelText("Monthly production (kg)")).toHaveValue(
-      "3000",
-    ),
+    expect(
+      screen.getByLabelText("How many kilograms do you produce per month?"),
+    ).toHaveValue("3000"),
   );
+  expect(
+    screen.getByRole("heading", { name: "Edit data & costs" }),
+  ).toBeInTheDocument();
 });
-it("setup shows no results, validates fields, and unlocks insights only after a valid save", async () => {
+it("onboarding starts empty, shows no results, validates each step and opens the workspace only after a valid save", async () => {
   const view = await openDemo("/data", { setup: false });
   const production = await screen.findByLabelText(
     "How many kilograms do you produce per month?",
   );
+  // A first visit is the full-screen form only: empty, no results, no menu.
   expect(production).toHaveValue("");
   expect(screen.queryByTestId("operating-cost")).toBeNull();
-  expect(screen.queryByRole("navigation", { name: "Features" })).toBeNull();
-  expect(localStorage.getItem(DEMO_KEY)).toBeNull();
-  fireEvent.click(
-    screen.getByRole("button", {
-      name: "Use 1000 – OG TOFU for How many kilograms do you produce per month?",
-    }),
+  expect(
+    screen.queryByRole("navigation", { name: "Main navigation" }),
+  ).toBeNull();
+  expect(screen.queryByRole("button", { name: /OG TOFU/ })).toBeNull();
+  expect(screen.getByRole("progressbar")).toHaveAttribute(
+    "aria-valuetext",
+    "Step 1 of 4",
   );
-  expect(production).toHaveValue("1000");
-  expect(screen.getByText(/reported · OG TOFU interview/)).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "Clear all fields" }));
+  expect(localStorage.getItem(DEMO_KEY)).toBeNull();
   change("How many kilograms do you produce per month?", "100");
   change("Pack weight (g) · pack size 1", "500");
   change("Share of production (%) · pack size 1", "90");
+  fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+  // Invalid shares: the step stays, the entries are kept, nothing is saved.
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "add up to 90%; they must total exactly 100%",
+  );
+  expect(screen.getByTestId("share-total")).toHaveClass("field-error");
+  expect(production).toHaveValue("100");
+  expect(localStorage.getItem(DEMO_KEY)).toBeNull();
+  change("Share of production (%) · pack size 1", "100");
+  fireEvent.click(screen.getByRole("button", { name: "+ Add pack size" }));
+  fireEvent.click(screen.getByRole("button", { name: "Remove pack size 2" }));
+  fireEvent.click(screen.getByRole("button", { name: "Continue" }));
   // Decimal comma is accepted and stored as a decimal point.
   change("Bag and label cost (€ per pack) · pack size 1", "0,10");
   expect(
     screen.getByLabelText("Bag and label cost (€ per pack) · pack size 1"),
   ).toHaveValue("0.10");
+  fireEvent.click(screen.getByRole("button", { name: "Continue" }));
   change("Labour cost (€ per pack)", "0.20");
-  fireEvent.click(
-    screen.getByRole("button", { name: "View packaging insights" }),
-  );
-  // Invalid shares: the field is highlighted, nothing is saved or unlocked.
-  expect(await screen.findByRole("alert")).toHaveTextContent(
-    "add up to 90%; they must total exactly 100%",
-  );
+  fireEvent.click(screen.getByRole("button", { name: "Continue" }));
   expect(
-    screen.getByRole("heading", { name: "Enter your data" }),
+    within(screen.getByRole("region", { name: "Production" })).getByText(
+      "100 kg",
+    ),
   ).toBeInTheDocument();
-  expect(localStorage.getItem(DEMO_KEY)).toBeNull();
-  change("Share of production (%) · pack size 1", "100");
-  fireEvent.click(screen.getByRole("button", { name: "Add pack size" }));
-  fireEvent.click(screen.getByRole("button", { name: "Remove pack size 2" }));
-  fireEvent.click(
-    screen.getByRole("button", { name: "View packaging insights" }),
-  );
-  expect(
-    await screen.findByRole("heading", { name: "Packaging Insights" }),
-  ).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Show my workspace" }));
   expect(await screen.findByTestId("operating-cost")).toHaveTextContent(
     "€60.00",
   );
-  view.unmount();
-  // Returning visitors review their saved inputs before continuing.
-  await openDemo("/", { setup: false });
   expect(
-    await screen.findByRole("heading", { name: "Review your saved inputs" }),
+    screen.getByRole("heading", { name: "Your costs" }),
   ).toBeInTheDocument();
   expect(
-    screen.getByLabelText("How many kilograms do you produce per month?"),
-  ).toHaveValue("100");
-  fireEvent.click(
-    screen.getByRole("button", { name: /Continue to Packaging Insights/ }),
-  );
+    screen.getByRole("heading", { name: "Future forecasting" }),
+  ).toBeInTheDocument();
+  view.unmount();
+  // Returning visitors with completed data go straight to their workspace.
+  await openDemo("/", { setup: false });
   expect(await screen.findByTestId("operating-cost")).toHaveTextContent(
     "€60.00",
   );
@@ -598,10 +590,10 @@ it("asks the upgrade advisor with the current operation and shows its answer", a
   vi.stubGlobal("fetch", fetchMock);
   try {
     await openDemo();
-    fireEvent.click(screen.getByRole("link", { name: /Market research/ }));
+    fireEvent.click(navLink(/Market research/));
     fireEvent.click(
       await screen.findByRole("button", {
-        name: /cheaper per kilogram/,
+        name: "How could we reduce our packaging costs?",
       }),
     );
     expect(await screen.findByTestId("advisor-assistant")).toHaveTextContent(
@@ -633,7 +625,7 @@ it("shows prepared OG TOFU research without calling the AI, and keeps it out of 
   vi.stubGlobal("fetch", fetchMock);
   try {
     await openDemo();
-    fireEvent.click(screen.getByRole("link", { name: /Market research/ }));
+    fireEvent.click(navLink(/Market research/));
     fireEvent.click(
       await screen.findByRole("button", {
         name: /Which EU and Latvian packaging rules affect us/,
@@ -641,7 +633,7 @@ it("shows prepared OG TOFU research without calling the AI, and keeps it out of 
     );
     const answer = await screen.findByTestId("advisor-assistant");
     expect(answer).toHaveTextContent("Regulation (EU) 2025/40");
-    expect(answer).toHaveTextContent("Prepared answer · researched");
+    expect(answer).toHaveTextContent("Prepared example for OG TOFU");
     expect(fetchMock).not.toHaveBeenCalled();
     change("Your question", "What about labels?");
     fireEvent.click(screen.getByRole("button", { name: "Ask the advisor" }));
@@ -762,30 +754,39 @@ it("fills step 1 from a sales forecast pasted from Excel", async () => {
     }),
   );
   expect(
-    await screen.findByRole("heading", { name: "Packaging Insights" }),
+    await screen.findByRole("heading", { name: "Your workspace" }),
   ).toBeInTheDocument();
   expect(screen.getByRole("region", { name: "Your data" })).toHaveTextContent(
     "1,150 kg / month",
   );
 });
-it("shows the results with next-action cards after step 1", async () => {
+it("the workspace leads with Your costs and Future forecasting, and offers market research", async () => {
   await openDemo();
-  const hub = await screen.findByRole("region", { name: "Next actions" });
-  for (const title of [
-    "Research alternatives",
-    "Test a cost change",
-    "Plan stock",
-    "Review demand",
-    "Use customer feedback",
-  ])
-    expect(within(hub).getByText(title)).toBeInTheDocument();
-  expect(hub).toHaveTextContent("lower your €0.286 per kg");
-  expect(hub).toHaveTextContent("Your 250 g packs cost €0.88/kg to pack");
-  expect(hub).toHaveTextContent("about 1,300 bags and labels a month");
-  fireEvent.click(
-    within(hub).getByRole("link", { name: /Use customer feedback/ }),
-  );
+  expect(screen.getByRole("heading", { name: "Your costs" })).toBeVisible();
   expect(
-    await screen.findByRole("heading", { name: "Customer survey" }),
+    screen.getByRole("heading", { name: "Future forecasting" }),
+  ).toBeVisible();
+  // No grid of unrelated feature cards.
+  expect(screen.queryByRole("region", { name: "Next actions" })).toBeNull();
+  expect(screen.getByTestId("cost-drivers")).toHaveTextContent(
+    "Labour is the largest cost: 68%",
+  );
+  expect(screen.getByTestId("cost-drivers")).toHaveTextContent(
+    "250 g packs cost €0.88/kg to pack",
+  );
+  // A projection only follows stated assumptions; none means no change.
+  expect(screen.getByTestId("projection-summary")).toHaveTextContent(
+    "No change assumed",
+  );
+  change("Production change", "100");
+  expect(screen.getByTestId("projection-summary")).toHaveTextContent(
+    "packaging cost €572 a month (now €286)",
+  );
+  fireEvent.click(screen.getByRole("link", { name: "Ask market research" }));
+  expect(
+    await screen.findByRole("heading", { name: "Market research" }),
   ).toBeInTheDocument();
+  expect(await screen.findByTestId("research-costs")).toHaveTextContent(
+    "€286.00 a month",
+  );
 });

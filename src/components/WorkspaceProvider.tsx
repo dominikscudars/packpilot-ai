@@ -18,10 +18,13 @@ import { useRequest, RequestState, message } from "./AsyncState";
 import {
   loadDraft,
   loadSetupRecord,
+  loadSkipped,
   saveDraft,
   saveSetupRecord,
+  saveSkipped,
   scopeKey,
   setupProblems,
+  type OnboardingStatus,
 } from "../setup/setupState";
 export interface LastComparison {
   key: string;
@@ -40,11 +43,22 @@ interface WorkspaceContext {
   scope: string;
   /** Setup gate: saved inputs meet the engine's minimum requirements. */
   setupReady: boolean;
-  /** A returning demo visitor has confirmed their saved inputs this session. */
-  reviewed: boolean;
-  markReviewed: () => void;
+  /**
+   * Onboarding state for this scope: "none" shows only data entry,
+   * "skipped" opens the workspace without any results, "completed" has
+   * saved company data. Persisted per scope, so refreshes and direct links
+   * see the same state. UI only: backend auth and membership still apply.
+   */
+  onboarding: OnboardingStatus;
   /** Records successful setup for the saved scenario. */
   completeSetup: (saved: Draft) => void;
+  /** "Skip for now": open the workspace with empty states, no results. */
+  skipSetup: () => void;
+  /** Companies this account can open, and switching between them. */
+  companies: CompanyRecord[];
+  selectCompany: (id: string) => void;
+  /** Leaves the demo or signs out. */
+  exit: () => void;
   /** When the saved inputs were last saved in this workspace (ISO), if known. */
   savedAt: string | null;
   /** Last "Test a cost change" result, tied to the inputs it was made on. */
@@ -128,6 +142,11 @@ function restoredSetup(
     ? { id: saved.id, name: saved.name, input: saved.input }
     : null;
 }
+interface Account {
+  companies: CompanyRecord[];
+  selectCompany: (id: string) => void;
+  exit: () => void;
+}
 function LoadedWorkspace({
   initial,
   company: initialCompany,
@@ -135,6 +154,7 @@ function LoadedWorkspace({
   mode,
   userId,
   onCompany,
+  account,
   children,
 }: {
   initial: Catalog;
@@ -143,6 +163,7 @@ function LoadedWorkspace({
   mode: "demo" | "authenticated";
   userId: string | null;
   onCompany: (company: CompanyRecord) => void;
+  account: Account;
   children: ReactNode;
 }) {
   const scope = scopeKey(mode, userId, initialCompany.id);
@@ -150,8 +171,12 @@ function LoadedWorkspace({
   const [company, setCompany] = useState(initialCompany);
   const [restored] = useState(() => restoredSetup(mode, scope, initial));
   const [setupReady, setSetupReady] = useState(restored !== null);
-  // Returning demo visitors confirm their saved inputs once per session.
-  const [reviewed, setReviewed] = useState(mode === "authenticated");
+  const [skipped, setSkipped] = useState(() => loadSkipped(scope));
+  const onboarding: OnboardingStatus = setupReady
+    ? "completed"
+    : skipped
+      ? "skipped"
+      : "none";
   const [draft, setDraftState] = useState(() => loadDraft(scope));
   const [savedAt, setSavedAt] = useState<string | null>(() =>
     mode === "demo" ? (loadSetupRecord(scope)?.completedAt ?? null) : null,
@@ -179,13 +204,16 @@ function LoadedWorkspace({
     mode,
     scope,
     setupReady,
-    reviewed,
-    markReviewed: () => setReviewed(true),
+    onboarding,
     completeSetup(saved) {
       if (mode === "demo" && saved.id) saveSetupRecord(scope, saved.id);
       setSetupReady(true);
-      setReviewed(true);
     },
+    skipSetup() {
+      saveSkipped(scope);
+      setSkipped(true);
+    },
+    ...account,
     draft,
     setDraft,
     savedAt,
@@ -237,6 +265,9 @@ function LoadedWorkspace({
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }
 function CompanyLoader(props: {
+  /** Company switcher and exit, shown while the company's data loads. */
+  loadingBar: ReactNode;
+  account: Account;
   company: CompanyRecord;
   gateway: Gateway;
   mode: "demo" | "authenticated";
@@ -279,14 +310,17 @@ function CompanyLoader(props: {
   );
   if (!state.data)
     return (
-      <section className="panel">
-        <RequestState error={state.error} loading={!state.error} />
-        {state.error && (
-          <button onClick={() => setRetry((r) => r + 1)}>
-            Retry loading company
-          </button>
-        )}
-      </section>
+      <>
+        {props.loadingBar}
+        <section className="panel loading-panel">
+          <RequestState error={state.error} loading={!state.error} />
+          {state.error && (
+            <button onClick={() => setRetry((r) => r + 1)}>
+              Retry loading company
+            </button>
+          )}
+        </section>
+      </>
     );
   return <LoadedWorkspace {...props} initial={state.data} />;
 }
@@ -312,7 +346,14 @@ export function WorkspaceProvider({
   const state = useRequest(`companies:${retry}`, () => gateway.companies());
   const companies = state.data?.map((c) => overrides[c.id] ?? c);
   const company = companies?.find((c) => c.id === selected) ?? companies?.[0];
-  return (
+  const account: Account = {
+    companies: companies ?? [],
+    selectCompany: setSelected,
+    exit,
+  };
+  // Once a company is open, the shell renders the company switcher and the
+  // exit action in its own header; this bar covers loading and errors.
+  const bar = (
     <>
       <div className="account-bar">
         <strong>
@@ -340,15 +381,13 @@ export function WorkspaceProvider({
           {mode === "demo" ? "Exit demo" : "Sign out"}
         </button>
       </div>
-      {mode === "demo" && (
-        <div className="notice demo-banner">
-          Demo: values marked “OG TOFU” come from an interview with the company;
-          estimates are labelled as such. Everything stays in this browser and
-          is never uploaded.
-        </div>
-      )}
+    </>
+  );
+  return (
+    <>
       {!companies ? (
         <main>
+          {bar}
           <RequestState error={state.error} loading={!state.error} />
           {state.error && (
             <button onClick={() => setRetry((r) => r + 1)}>
@@ -358,6 +397,8 @@ export function WorkspaceProvider({
         </main>
       ) : company ? (
         <CompanyLoader
+          loadingBar={bar}
+          account={account}
           key={company.id}
           company={company}
           gateway={gateway}
@@ -371,6 +412,7 @@ export function WorkspaceProvider({
         </CompanyLoader>
       ) : (
         <main className="auth-screen">
+          {bar}
           <section className="panel">
             <h1>No companies yet</h1>
             <p>

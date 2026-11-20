@@ -121,22 +121,38 @@ export const scopeKey = (
 ) => `${mode}:${userId ?? "local"}:${companyId}`;
 
 const STORE = "packpilot.setup.v1";
-const recordSchema = z
+/**
+ * Per-scope onboarding record. Version 1: setup completed with a saved
+ * scenario. Version 2: the visitor skipped data entry (no results shown).
+ */
+const completedSchema = z
   .object({
     version: z.literal(1),
     scenarioId: z.string().min(1),
     completedAt: z.string(),
   })
   .strict();
-export type SetupRecord = z.infer<typeof recordSchema>;
+const skippedSchema = z
+  .object({
+    version: z.literal(2),
+    status: z.literal("skipped"),
+    skippedAt: z.string(),
+  })
+  .strict();
+const recordSchema = z.union([completedSchema, skippedSchema]);
+export type SetupRecord = z.infer<typeof completedSchema>;
+type AnyRecord = z.infer<typeof recordSchema>;
 
-function readAll(): Record<string, SetupRecord> {
+/** none: first visit · skipped: workspace without results · completed: data saved. */
+export type OnboardingStatus = "none" | "skipped" | "completed";
+
+function readAll(): Record<string, AnyRecord> {
   try {
     const raw = localStorage.getItem(STORE);
     if (!raw) return {};
     const parsed: unknown = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object") return {};
-    const out: Record<string, SetupRecord> = {};
+    const out: Record<string, AnyRecord> = {};
     for (const [scope, value] of Object.entries(parsed)) {
       const record = recordSchema.safeParse(value);
       if (record.success) out[scope] = record.data;
@@ -146,21 +162,37 @@ function readAll(): Record<string, SetupRecord> {
     return {};
   }
 }
-function writeAll(all: Record<string, SetupRecord>) {
+function writeAll(all: Record<string, AnyRecord>) {
   try {
     localStorage.setItem(STORE, JSON.stringify(all));
   } catch {
-    // Storage blocked: readiness then lasts for this page session only.
+    // Storage blocked: onboarding state then lasts for this page session only.
   }
 }
 
+/** The completed-setup record for a scope (null if none or skipped). */
 export function loadSetupRecord(scope: string): SetupRecord | null {
-  return readAll()[scope] ?? null;
+  const record = readAll()[scope];
+  return record?.version === 1 ? record : null;
 }
 export function saveSetupRecord(scope: string, scenarioId: string) {
   writeAll({
     ...readAll(),
     [scope]: { version: 1, scenarioId, completedAt: new Date().toISOString() },
+  });
+}
+/** Whether this scope chose "Skip for now" (and has not completed setup). */
+export function loadSkipped(scope: string): boolean {
+  return readAll()[scope]?.version === 2;
+}
+export function saveSkipped(scope: string) {
+  writeAll({
+    ...readAll(),
+    [scope]: {
+      version: 2,
+      status: "skipped",
+      skippedAt: new Date().toISOString(),
+    },
   });
 }
 export function clearSetupRecords(prefix: string) {

@@ -9,6 +9,7 @@ import {
 import { MemoryRouter } from "react-router-dom";
 import type { ReactNode } from "react";
 import App from "../App";
+import { enterReferenceData, navLink } from "./journey";
 import { createDemoScenario } from "../../backend/src/domain/demo";
 import { calculatePackaging } from "../../backend/src/calculation-engine/packaging";
 import { assumed } from "../../backend/src/domain/inputs";
@@ -73,28 +74,19 @@ async function openReference(path = "/") {
     </MemoryRouter>,
   );
   fireEvent.click(screen.getByRole("button", { name: "Open local demo" }));
-  fireEvent.click(
-    await screen.findByRole("button", {
-      name: "Fill everything with OG TOFU data",
-    }),
-  );
-  fireEvent.click(
-    screen.getByRole("button", { name: "View packaging insights" }),
-  );
-  await screen.findByRole("heading", { name: "Packaging Insights" });
+  await enterReferenceData();
 }
 
-describe("Packaging Insights decisions", () => {
+describe("Your costs decisions", () => {
   it("shows observations, sources and the missing-input action list", async () => {
     await openReference();
-    const obs = await screen.findByRole("region", {
-      name: "What the numbers show",
-    });
-    expect(obs).toHaveTextContent("largest cost");
+    expect(await screen.findByTestId("cost-drivers")).toHaveTextContent(
+      "largest cost",
+    );
     expect(screen.getByTestId("data-sources")).toHaveTextContent(
       /Sources: \d+ reported/,
     );
-    const missing = screen.getByRole("region", { name: "What is missing" });
+    const missing = screen.getByRole("note", { name: "What is missing" });
     expect(
       within(missing).getAllByRole("link")[0].getAttribute("href"),
     ).toMatch(/^\/data#/);
@@ -134,11 +126,7 @@ describe("Packaging Insights decisions", () => {
   it("shows savings and payback once recurring costs are known", async () => {
     await openReference();
     // Fill the recurring costs in Edit data & costs.
-    fireEvent.click(
-      within(
-        screen.getByRole("navigation", { name: "Main navigation" }),
-      ).getByRole("link", { name: /Edit data & costs/ }),
-    );
+    fireEvent.click(navLink(/Edit data & costs/));
     await screen.findByRole("heading", { name: "Edit data & costs" });
     for (const label of [
       "Machine maintenance (€ per month)",
@@ -148,7 +136,7 @@ describe("Packaging Insights decisions", () => {
         target: { value: "0" },
       });
     fireEvent.click(
-      screen.getByRole("button", { name: "Save changes & update insights" }),
+      screen.getByRole("button", { name: "Save changes & update costs" }),
     );
     const panel = await screen.findByRole("region", {
       name: "Test a cost change",
@@ -178,7 +166,7 @@ describe("Packaging Insights decisions", () => {
 
   it("decision brief shows results, sources and exports CSV", async () => {
     await openReference();
-    fireEvent.click(screen.getByRole("link", { name: "Decision brief" }));
+    fireEvent.click(navLink(/Decision brief/));
     expect(await screen.findByTestId("brief-total")).toHaveTextContent(
       "€286.00",
     );

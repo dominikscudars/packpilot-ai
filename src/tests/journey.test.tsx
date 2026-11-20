@@ -1,0 +1,218 @@
+import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+import App from "../App";
+import { createDemoScenario } from "../../backend/src/domain/demo";
+import { assumed } from "../../backend/src/domain/inputs";
+import { DEMO_COMPANY_ID, DEMO_KEY } from "../demo/apiDemo";
+import {
+  loadSetupRecord,
+  loadSkipped,
+  saveSkipped,
+  scopeKey,
+} from "../setup/setupState";
+import {
+  NO_CHANGE,
+  capacityLimit,
+  fromHistory,
+  project,
+} from "../forecast/projection";
+import { loadHistory, saveHistory } from "../forecast/historyStore";
+import { enterReferenceData, navLink, type } from "./journey";
+
+const SCOPE = scopeKey("demo", null, DEMO_COMPANY_ID);
+function mount(path: string) {
+  return render(
+    <MemoryRouter initialEntries={[path]}>
+      <App
+        services={{ auth: null, apiUrl: "http://localhost:3001", error: null }}
+      />
+    </MemoryRouter>,
+  );
+}
+async function open(path = "/") {
+  const view = mount(path);
+  const button = screen.queryByRole("button", { name: "Open local demo" });
+  if (button) fireEvent.click(button);
+  await screen.findByRole("heading", {
+    name: /^(Enter your data|Your workspace|Sales history|Market research|Stock & orders)$/,
+  });
+  return view;
+}
+
+describe("skip journey", () => {
+  it("opens an empty workspace without any calculated or sample figures", async () => {
+    await open();
+    fireEvent.click(screen.getByRole("button", { name: "Skip for now" }));
+    await screen.findByRole("heading", { name: "Your workspace" });
+    expect(screen.getByRole("heading", { name: "Your costs" })).toBeVisible();
+    expect(
+      screen.getByRole("heading", { name: "Future forecasting" }),
+    ).toBeVisible();
+    expect(screen.getByText("No costs yet")).toBeInTheDocument();
+    expect(screen.getByText("No forecast yet")).toBeInTheDocument();
+    expect(screen.queryByTestId("operating-cost")).toBeNull();
+    // No euro amount or OG TOFU figure anywhere in the workspace.
+    expect(screen.getByRole("main").textContent).not.toMatch(/€\s?\d/);
+    expect(screen.getByRole("main").textContent).not.toMatch(/OG TOFU/);
+    expect(loadSkipped(SCOPE)).toBe(true);
+    expect(loadSetupRecord(SCOPE)).toBeNull();
+  });
+
+  it("keeps the skipped state across refreshes and direct links", async () => {
+    saveSkipped(SCOPE);
+    const view = await open("/reorder");
+    // Tools that need company data explain it instead of showing results.
+    expect(
+      await screen.findByText("Enter your data first"),
+    ).toBeInTheDocument();
+    view.unmount();
+    await open("/data");
+    // Editing before any data exists is the onboarding form itself.
+    expect(
+      await screen.findByRole("heading", { name: "Enter your data" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Finish setting up")).toBeInTheDocument();
+  });
+
+  it("can enter data later and then shows costs", async () => {
+    saveSkipped(SCOPE);
+    await open("/");
+    fireEvent.click(
+      screen.getAllByRole("link", { name: "Enter your data" })[0],
+    );
+    await enterReferenceData();
+    expect(screen.getByTestId("operating-cost")).toHaveTextContent("€286.00");
+    expect(loadSkipped(SCOPE)).toBe(false);
+  });
+});
+
+describe("returning users and direct links", () => {
+  it("go straight to the workspace or the linked page once data is saved", async () => {
+    const view = await open("/");
+    await enterReferenceData();
+    view.unmount();
+    // Same tab after a refresh: no entry screen, no onboarding.
+    const again = await open("/forecast");
+    expect(
+      screen.getByRole("heading", { name: "Sales history" }),
+    ).toBeInTheDocument();
+    again.unmount();
+    await open("/welcome");
+    expect(await screen.findByTestId("operating-cost")).toHaveTextContent(
+      "€286.00",
+    );
+  });
+
+  it("never prefills a new demo with stored OG TOFU data", async () => {
+    localStorage.setItem("packpilot.demo.v2", '{"company":{"name":"OG TOFU"}}');
+    await open("/");
+    expect(
+      screen.getByLabelText("How many kilograms do you produce per month?"),
+    ).toHaveValue("");
+    expect(screen.queryByText(/OG TOFU/)).toBeNull();
+    expect(localStorage.getItem(DEMO_KEY)).toBeNull();
+  });
+});
+
+describe("editing updates costs and forecasts", () => {
+  it("recalculates Your costs and the projection after saving an edit", async () => {
+    await open("/");
+    await enterReferenceData();
+    type("Production change", "100");
+    expect(screen.getByTestId("projection-summary")).toHaveTextContent(
+      "€572 a month (now €286)",
+    );
+    fireEvent.click(navLink(/Edit data & costs/));
+    type("Bag and label cost (€ per pack) · pack size 1", "0.08");
+    fireEvent.click(
+      screen.getByRole("button", { name: "Save changes & update costs" }),
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("operating-cost")).toHaveTextContent("€294.00"),
+    );
+    // The forecast now starts from the edited data.
+    expect(screen.getByTestId("projection-summary")).toHaveTextContent(
+      "No change assumed: your cost stays at €294",
+    );
+  });
+
+  it("uses saved sales history as actual data when available", async () => {
+    await open("/");
+    await enterReferenceData();
+    fireEvent.click(navLink(/Sales history/));
+    type(
+      "Paste from Excel or Google Sheets",
+      "Month\t1 kg\t500 g\t250 g\n2026-08\t800\t300\t200\n2026-09\t850\t300\t200\n2026-10\t900\t300\t200",
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Save as my sales history" }),
+    );
+    expect(await screen.findByRole("status")).toHaveTextContent("Saved");
+    fireEvent.click(navLink(/Workspace/));
+    expect(await screen.findByTestId("history-basis")).toHaveTextContent(
+      "Actual production for your last 3 months",
+    );
+    expect(
+      screen.getByRole("button", { name: "From your sales history" }),
+    ).toHaveAttribute("aria-pressed", "true");
+  });
+});
+
+describe("projection maths", () => {
+  const input = createDemoScenario();
+  const start = new Date(Date.UTC(2026, 10, 1));
+  it("is flat with no assumptions and follows the engine exactly", () => {
+    const points = project(input, NO_CHANGE, start);
+    expect(points).toHaveLength(13);
+    expect(points[0]).toMatchObject({ label: "Now", costEuro: 286 });
+    expect(points.at(-1)).toMatchObject({ label: "Nov 27", costEuro: 286 });
+  });
+  it("ramps production and prices linearly to the horizon", () => {
+    const points = project(
+      input,
+      { ...NO_CHANGE, productionChangePct: 100, materialChangePct: 10 },
+      start,
+    );
+    // 2,000 kg → 2,600 packs × (€0.077 + €0.15) = €590.20
+    expect(points.at(-1)?.productionKg).toBe(2000);
+    expect(points.at(-1)?.costEuro).toBeCloseTo(590.2, 6);
+    expect(points[6]?.productionKg).toBe(1500);
+  });
+  it("finds the first month above available machine hours", () => {
+    const limited = createDemoScenario();
+    limited.machines[0].availableHoursPerMonth = assumed("20", "test");
+    const points = project(
+      limited,
+      { ...NO_CHANGE, productionChangePct: 100 },
+      start,
+    );
+    const limit = capacityLimit(limited, points);
+    expect(limit.available).toBe(20);
+    expect(limit.first?.machineHours).toBeGreaterThan(20);
+    expect(capacityLimit(input, points).available).toBeNull();
+  });
+  it("needs three months of history and never invents past costs", () => {
+    const short = {
+      version: 1 as const,
+      unit: "packs" as const,
+      savedAt: "",
+      table: "Month\t1 kg\n2026-09\t800\n2026-10\t850",
+    };
+    expect(fromHistory(input, short)).toBeNull();
+    const ok = fromHistory(input, {
+      ...short,
+      table:
+        "Month\t1 kg\t500 g\t250 g\n2026-08\t800\t300\t200\n2026-09\t850\t300\t200\n2026-10\t900\t300\t200",
+    })!;
+    const actual = ok.points.filter((p) => p.kind === "actual");
+    expect(actual.map((p) => p.productionKg)).toEqual([1000, 1050, 1100]);
+    expect(actual.every((p) => p.costEuro === null)).toBe(true);
+    expect(ok.points.filter((p) => p.kind === "projected")).toHaveLength(6);
+  });
+  it("stores history per workspace scope", () => {
+    expect(saveHistory("demo:local:a", "kg", "Month\t1 kg")).toBe(true);
+    expect(loadHistory("demo:local:a")?.unit).toBe("kg");
+    expect(loadHistory("demo:local:b")).toBeNull();
+  });
+});
