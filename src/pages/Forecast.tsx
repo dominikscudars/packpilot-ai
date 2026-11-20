@@ -334,11 +334,6 @@ export function Forecast() {
           >
             {busy ? "Saving…" : "Use next month's forecast in my data →"}
           </button>
-          <p className="footnote">
-            A straight-line trend through your monthly totals. It does not know
-            about seasons, new customers or lost customers; check it against
-            what you expect.
-          </p>
         </section>
       )}
     </>

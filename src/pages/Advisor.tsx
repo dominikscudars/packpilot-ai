@@ -251,10 +251,7 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
           {turns.length === 0 && (
             <div className="chat-empty">
               <h2>What would you like to improve?</h2>
-              <p className="muted">
-                Live research uses a limited free AI quota shared by everyone
-                using this demo. Pick a question or write your own.
-              </p>
+              <p className="muted">Pick a question or write your own.</p>
               <div className="starters">
                 {STARTERS.map((s) => (
                   <button
@@ -331,9 +328,7 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
                 )}
                 {turn.sources && turn.sources.length > 0 && (
                   <div className="advisor-sources">
-                    <span className="muted">
-                      Sources (external, unverified):
-                    </span>
+                    <span className="muted">Sources:</span>
                     <ul>
                       {turn.sources.map((s) => (
                         <li key={s.url}>
@@ -404,24 +399,20 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
             {busy ? "Working…" : "Ask the advisor"}
           </button>
         </form>
-        <p className="footnote">
-          AI suggestions can be wrong. Company figures come from PackPilot's
-          deterministic calculations on the data shown; prices found online are
-          unverified until a supplier quotes them. The assistant is a general AI
-          model given your data for each question — it is not trained on it —
-          and does not certify food safety, shelf life, recyclability or machine
-          compatibility.
-        </p>
       </section>
+
 
       <details className="card prepared" open={examplesOpen}>
         <summary>
           Example research for a sample company (OG TOFU) · no AI quota used
         </summary>
+
+      <details className="card prepared">
+        <summary>Example research for a sample company (OG TOFU)</summary>
+
         <p className="muted">
           Answers researched on {PREPARED_DATE} for OG TOFU, a Latvian tofu
-          producer. Their figures are OG TOFU's, not yours — open one to see the
-          kind of answer the assistant gives.
+          producer.
         </p>
         <div className="starters">
           {PREPARED_ANSWERS.map((item) => (

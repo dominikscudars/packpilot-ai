@@ -232,7 +232,7 @@ describe("Your costs decisions", () => {
     );
     const savings = await within(panel).findByTestId("savings");
     expect(savings).toHaveTextContent("Net change in monthly running costs");
-    expect(savings).toHaveTextContent("not a guaranteed saving");
+    expect(savings).toHaveTextContent("saved per month");
   });
 
   it("decision brief shows results, sources and exports CSV", async () => {
