@@ -265,8 +265,7 @@ export function TestChange() {
               <strong>{money(current.data.monthlyNetSavingsEuro)}</strong> saved
               per month (negative means it costs more).
               {current.data.simplePaybackMonths !== null &&
-                ` Simple payback: about ${decimalText(current.data.simplePaybackMonths, 1)} months.`}{" "}
-              Modelled from your inputs; not a guaranteed saving.
+                ` Simple payback: about ${decimalText(current.data.simplePaybackMonths, 1)} months.`}
             </p>
           ) : (
             <p className="notice" data-testid="no-savings">

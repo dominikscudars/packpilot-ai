@@ -36,7 +36,7 @@ function NeedsData({
       <section className="card section">
         <EmptyState
           title="Enter your data first"
-          text={`${title} works from your production and cost data, which you haven't entered yet. PackPilot doesn't show sample figures in its place.`}
+          text={`${title} works from your production and cost data, which you haven't entered yet.`}
         />
       </section>
     </div>
@@ -138,10 +138,6 @@ function Shell() {
             }
           />
         </Routes>
-        <footer className="page-footer">
-          <span>PackPilot AI · Pilot release</span>
-          <span>Deterministic calculations from your own inputs.</span>
-        </footer>
       </main>
     </div>
   );

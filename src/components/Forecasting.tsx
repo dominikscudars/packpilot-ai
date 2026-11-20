@@ -101,8 +101,7 @@ export function Forecasting({ input }: { input: ScenarioInput }) {
         <>
           {!history && (
             <p className="muted small">
-              No sales history yet, so this is a projection from your current
-              data and the assumptions below — not a prediction.{" "}
+              Projection from your current data and the assumptions below.{" "}
               <Link to="/forecast">Add your sales history</Link> to see your
               actual trend.
             </p>
@@ -142,8 +141,8 @@ export function Forecasting({ input }: { input: ScenarioInput }) {
           Actual production for your last {history.months} months, then a
           straight-line trend ({history.trendKgPerMonth >= 0 ? "+" : ""}
           {history.trendKgPerMonth.toLocaleString("en-US")} kg per month) for
-          the next 6 months at today's prices and pack mix. A trend estimate,
-          not a guarantee. <Link to="/forecast">Update sales history</Link>
+          the next 6 months at today's prices and pack mix.{" "}
+          <Link to="/forecast">Update sales history</Link>
         </p>
       )}
 

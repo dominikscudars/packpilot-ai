@@ -343,10 +343,7 @@ export function AuthGate({
         )}
         <hr />
         <h2>Explore the local demo</h2>
-        <p>
-          Try PackPilot with your own numbers. Everything you enter stays in
-          this browser and is never uploaded.
-        </p>
+        <p>Try PackPilot with your own numbers.</p>
         <button
           className="secondary"
           onClick={() => {

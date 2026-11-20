@@ -192,8 +192,7 @@ export function Onboarding() {
                 <strong>Just looking around?</strong> Load the example pilot
                 profile (OG TOFU): a Latvian tofu producer's reported figures
                 (about 1,000 kg a month, HURAKAN VAC 400, 1 kg / 500 g / 250 g
-                packs). Unknown costs stay unknown. It replaces anything in this
-                demo.
+                packs). It replaces anything in this demo.
               </p>
               <button
                 type="button"
@@ -360,11 +359,6 @@ export function Onboarding() {
             )}
           </div>
         </div>
-        <p className="ob-footnote">
-          {mode === "demo"
-            ? "Local demo: your answers stay in this browser and are never uploaded."
-            : "Saved to your company workspace. Only members of this company can see it."}
-        </p>
       </main>
     </div>
   );

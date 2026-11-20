@@ -327,10 +327,6 @@ export function Reorder() {
             </select>
           </label>
         </div>
-        <p className="footnote">
-          Assumes no orders are already on the way. Use is spread evenly over
-          the month; dates are from today, {formatDate(asOf)}.
-        </p>
       </section>
 
       <section className="panel" aria-live="polite">

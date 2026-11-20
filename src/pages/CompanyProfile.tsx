@@ -90,9 +90,6 @@ function ProductEditor({
       </form>
       <RequestState error={error} />
       {notice && <p role="status">{notice}</p>}
-      <p className="footnote">
-        Reported storage and shelf life are not safety certification.
-      </p>
     </section>
   );
 }
