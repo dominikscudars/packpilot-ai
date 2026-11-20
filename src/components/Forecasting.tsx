@@ -1,14 +1,11 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import type { ScenarioInput } from "../models/api";
-import { useWorkspace } from "./WorkspaceProvider";
 import { LineChart, SERIES } from "./charts";
-import { loadHistory } from "../forecast/historyStore";
 import { optimisations } from "../forecast/optimise";
 import {
   NO_CHANGE,
   capacityLimit,
-  fromHistory,
   project,
   scenarioAtEnd,
   type Assumptions,
@@ -26,29 +23,18 @@ const hours = (v: number) =>
 const pct = (v: number) => `${v > 0 ? "+" : ""}${v}%`;
 
 /**
- * Future forecasting from the saved data. With sales history it shows the
- * actual months and a straight-line trend; otherwise a projection that only
- * follows the user's stated assumptions. Neither is presented as a reliable
- * prediction.
+ * Future forecasting from the saved data: a projection that follows the
+ * user's stated assumptions, with ways to optimise the projected period.
  */
 export function Forecasting({ input }: { input: ScenarioInput }) {
-  const { scope } = useWorkspace();
-  const history = useMemo(() => {
-    const saved = loadHistory(scope);
-    return saved ? fromHistory(input, saved) : null;
-  }, [scope, input]);
-  const [mode, setMode] = useState<"history" | "projection">(
-    history ? "history" : "projection",
-  );
   const [a, setA] = useState<Assumptions>(NO_CHANGE);
   const projection = useMemo(() => project(input, a), [input, a]);
-  const active = mode === "history" && history ? history.points : projection;
+  const active = projection;
   const projectedFrom = active.findIndex((p) => p.kind === "projected");
   const limit = capacityLimit(input, active);
   const now = active.find((p) => p.offset === 0) ?? projection[0];
   const end = active.at(-1)!;
-  const endInput =
-    mode === "history" && history ? history.endInput : scenarioAtEnd(input, a);
+  const endInput = useMemo(() => scenarioAtEnd(input, a), [input, a]);
 
   const field = (key: keyof Assumptions, label: string, hint: string) => (
     <label className="assumption">
@@ -79,83 +65,33 @@ export function Forecasting({ input }: { input: ScenarioInput }) {
 
   return (
     <div className="forecasting">
-      <div
-        className="segmented-control"
-        role="group"
-        aria-label="Forecast source"
-      >
-        <button
-          type="button"
-          aria-pressed={mode === "history"}
-          disabled={!history}
-          onClick={() => setMode("history")}
-        >
-          From your sales history
-        </button>
-        <button
-          type="button"
-          aria-pressed={mode === "projection"}
-          onClick={() => setMode("projection")}
-        >
-          Projection from assumptions
-        </button>
+      <p className="muted small">
+        Projection from your current data and the assumptions below.
+      </p>
+      <div className="assumptions" aria-label="Projection assumptions">
+        {field(
+          "productionChangePct",
+          "Production change",
+          `by ${a.months} months from now`,
+        )}
+        {field("materialChangePct", "Material price change", "bags and labels")}
+        {field("labourChangePct", "Labour cost change", "per pack or per hour")}
+        <label className="assumption">
+          <span>Horizon</span>
+          <select
+            value={a.months}
+            onChange={(e) => setA({ ...a, months: Number(e.target.value) })}
+          >
+            <option value={6}>6 months</option>
+            <option value={12}>12 months</option>
+            <option value={24}>24 months</option>
+          </select>
+          <small>changes ramp in evenly</small>
+        </label>
       </div>
 
-      {mode === "projection" || !history ? (
-        <>
-          {!history && (
-            <p className="muted small">
-              Projection from your current data and the assumptions below.{" "}
-              <Link to="/forecast">Add your sales history</Link> to see your
-              actual trend.
-            </p>
-          )}
-          <div className="assumptions" aria-label="Projection assumptions">
-            {field(
-              "productionChangePct",
-              "Production change",
-              `by ${a.months} months from now`,
-            )}
-            {field(
-              "materialChangePct",
-              "Material price change",
-              "bags and labels",
-            )}
-            {field(
-              "labourChangePct",
-              "Labour cost change",
-              "per pack or per hour",
-            )}
-            <label className="assumption">
-              <span>Horizon</span>
-              <select
-                value={a.months}
-                onChange={(e) => setA({ ...a, months: Number(e.target.value) })}
-              >
-                <option value={6}>6 months</option>
-                <option value={12}>12 months</option>
-                <option value={24}>24 months</option>
-              </select>
-              <small>changes ramp in evenly</small>
-            </label>
-          </div>
-        </>
-      ) : (
-        <p className="muted small" data-testid="history-basis">
-          Actual production for your last {history.months} months, then a
-          straight-line trend ({history.trendKgPerMonth >= 0 ? "+" : ""}
-          {history.trendKgPerMonth.toLocaleString("en-US")} kg per month) for
-          the next 6 months at today's prices and pack mix.{" "}
-          <Link to="/forecast">Update sales history</Link>
-        </p>
-      )}
-
       <p className="forecast-summary" data-testid="projection-summary">
-        <Summary
-          now={now}
-          end={end}
-          assumptions={mode === "projection" || !history ? a : null}
-        />
+        <Summary now={now} end={end} assumptions={a} />
       </p>
 
       <div className="chart-grid">
@@ -225,10 +161,7 @@ export function Forecasting({ input }: { input: ScenarioInput }) {
       <Optimise
         end={endInput}
         label={
-          (mode === "projection" || !history) &&
-          !a.productionChangePct &&
-          !a.materialChangePct &&
-          !a.labourChangePct
+          !a.productionChangePct && !a.materialChangePct && !a.labourChangePct
             ? "Now"
             : end.label
         }

@@ -11,9 +11,7 @@ import { Onboarding } from "./pages/Onboarding";
 import { EditData } from "./pages/EditData";
 import { CompanyProfile } from "./pages/CompanyProfile";
 import { Advisor } from "./pages/Advisor";
-import { Reorder } from "./pages/Reorder";
 import { Survey } from "./pages/Survey";
-import { Forecast } from "./pages/Forecast";
 import { Brief } from "./pages/Brief";
 
 /** Tools that calculate from the company's data show an empty state until it exists. */
@@ -89,14 +87,7 @@ function Shell() {
             element={<Navigate to="/research" replace />}
           />
           <Route path="/company" element={<CompanyProfile />} />
-          <Route
-            path="/reorder"
-            element={
-              <NeedsData title="Stock & orders">
-                <Reorder />
-              </NeedsData>
-            }
-          />
+          <Route path="/reorder" element={<Navigate to="/" replace />} />
           <Route
             path="/survey"
             element={
@@ -113,19 +104,9 @@ function Shell() {
               </NeedsData>
             }
           />
-          <Route
-            path="/forecast"
-            element={
-              <NeedsData title="Sales history">
-                <Forecast />
-              </NeedsData>
-            }
-          />
+          <Route path="/forecast" element={<Navigate to="/" replace />} />
           <Route path="/simulator" element={<Navigate to="/" replace />} />
-          <Route
-            path="/inventory"
-            element={<Navigate to="/reorder" replace />}
-          />
+          <Route path="/inventory" element={<Navigate to="/" replace />} />
           <Route
             path="*"
             element={

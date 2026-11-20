@@ -11,13 +11,7 @@ import {
   saveSkipped,
   scopeKey,
 } from "../setup/setupState";
-import {
-  NO_CHANGE,
-  capacityLimit,
-  fromHistory,
-  project,
-} from "../forecast/projection";
-import { loadHistory, saveHistory } from "../forecast/historyStore";
+import { NO_CHANGE, capacityLimit, project } from "../forecast/projection";
 import { enterReferenceData, navLink, type } from "./journey";
 
 const SCOPE = scopeKey("demo", null, DEMO_COMPANY_ID);
@@ -35,7 +29,7 @@ async function open(path = "/") {
   const button = screen.queryByRole("button", { name: "Open local demo" });
   if (button) fireEvent.click(button);
   await screen.findByRole("heading", {
-    name: /^(Enter your data|Your workspace|Sales history|Market research|Stock & orders)$/,
+    name: /^(Enter your data|Your workspace|Customer survey|Market research|Decision brief)$/,
   });
   return view;
 }
@@ -87,7 +81,7 @@ describe("skip journey", () => {
 
   it("keeps the skipped state across refreshes and direct links", async () => {
     saveSkipped(SCOPE);
-    const view = await open("/reorder");
+    const view = await open("/brief");
     // Tools that need company data explain it instead of showing results.
     expect(
       await screen.findByText("Enter your data first"),
@@ -119,9 +113,9 @@ describe("returning users and direct links", () => {
     await enterReferenceData();
     view.unmount();
     // Same tab after a refresh: no entry screen, no onboarding.
-    const again = await open("/forecast");
+    const again = await open("/survey");
     expect(
-      screen.getByRole("heading", { name: "Sales history" }),
+      await screen.findByRole("heading", { name: "Customer survey" }),
     ).toBeInTheDocument();
     again.unmount();
     await open("/welcome");
@@ -164,27 +158,6 @@ describe("editing updates costs and forecasts", () => {
       "No change assumed: your cost stays at €294",
     );
   });
-
-  it("uses saved sales history as actual data when available", async () => {
-    await open("/");
-    await enterReferenceData();
-    fireEvent.click(navLink(/Sales history/));
-    type(
-      "Paste from Excel or Google Sheets",
-      "Month\t1 kg\t500 g\t250 g\n2026-08\t800\t300\t200\n2026-09\t850\t300\t200\n2026-10\t900\t300\t200",
-    );
-    fireEvent.click(
-      screen.getByRole("button", { name: "Save as my sales history" }),
-    );
-    expect(await screen.findByRole("status")).toHaveTextContent("Saved");
-    fireEvent.click(navLink(/Workspace/));
-    expect(await screen.findByTestId("history-basis")).toHaveTextContent(
-      "Actual production for your last 3 months",
-    );
-    expect(
-      screen.getByRole("button", { name: "From your sales history" }),
-    ).toHaveAttribute("aria-pressed", "true");
-  });
 });
 
 describe("projection maths", () => {
@@ -219,28 +192,5 @@ describe("projection maths", () => {
     expect(limit.available).toBe(20);
     expect(limit.first?.machineHours).toBeGreaterThan(20);
     expect(capacityLimit(input, points).available).toBeNull();
-  });
-  it("needs three months of history and never invents past costs", () => {
-    const short = {
-      version: 1 as const,
-      unit: "packs" as const,
-      savedAt: "",
-      table: "Month\t1 kg\n2026-09\t800\n2026-10\t850",
-    };
-    expect(fromHistory(input, short)).toBeNull();
-    const ok = fromHistory(input, {
-      ...short,
-      table:
-        "Month\t1 kg\t500 g\t250 g\n2026-08\t800\t300\t200\n2026-09\t850\t300\t200\n2026-10\t900\t300\t200",
-    })!;
-    const actual = ok.points.filter((p) => p.kind === "actual");
-    expect(actual.map((p) => p.productionKg)).toEqual([1000, 1050, 1100]);
-    expect(actual.every((p) => p.costEuro === null)).toBe(true);
-    expect(ok.points.filter((p) => p.kind === "projected")).toHaveLength(6);
-  });
-  it("stores history per workspace scope", () => {
-    expect(saveHistory("demo:local:a", "kg", "Month\t1 kg")).toBe(true);
-    expect(loadHistory("demo:local:a")?.unit).toBe("kg");
-    expect(loadHistory("demo:local:b")).toBeNull();
   });
 });

@@ -1,8 +1,6 @@
 import { Decimal } from "decimal.js";
 import type { Quantity, ScenarioInput } from "../models/api";
 import { calculatePackaging } from "../../backend/src/calculation-engine/packaging";
-import { parseTable } from "../survey/tabulate";
-import { buildForecast } from "./forecast";
 
 /**
  * Future forecasting. Two honest sources only:
@@ -174,64 +172,4 @@ export function capacityLimit(input: ScenarioInput, points: Point[]) {
     points.find((p) => p.machineHours !== null && p.machineHours > available) ??
     null;
   return { available, first };
-}
-
-/** Saved sales history (pasted table) for one workspace scope. */
-export interface SalesHistory {
-  version: 1;
-  unit: "packs" | "kg";
-  table: string;
-  savedAt: string;
-}
-
-/**
- * Actual monthly production from the history, then a straight-line trend for
- * the next months with costs at today's prices and pack mix. Returns null if
- * fewer than three months match the saved pack sizes.
- */
-export function fromHistory(
-  input: ScenarioInput,
-  history: SalesHistory,
-  months = 6,
-) {
-  const formats = input.formats
-    .map((f) => ({ id: f.id, grams: Number(f.portionWeightGrams.value) }))
-    .filter((f) => f.grams > 0);
-  const result = buildForecast(
-    parseTable(history.table),
-    formats,
-    history.unit,
-    months,
-  );
-  if (result.history.length < 3) return null;
-  const one = new Decimal(1);
-  const points: Point[] = result.history.map((r, i) => ({
-    label: r.label,
-    offset: i - result.history.length + 1,
-    kind: "actual",
-    productionKg: Math.round(r.totalKg),
-    // Past costs are not known: only today's prices are entered.
-    costEuro: null,
-    euroPerKg: null,
-    machineHours: null,
-  }));
-  const lastKg = result.forecast.at(-1)?.totalKg;
-  const endInput =
-    lastKg === undefined ? input : adjusted(input, one, one, one, lastKg);
-  for (const [i, f] of result.forecast.entries())
-    points.push(
-      point(
-        adjusted(input, one, one, one, f.totalKg),
-        f.label,
-        i + 1,
-        "projected",
-      ),
-    );
-  return {
-    points,
-    trendKgPerMonth: result.trendKgPerMonth,
-    months: result.history.length,
-    /** The inputs at the last forecast month, for optimisation options. */
-    endInput,
-  };
 }
