@@ -150,3 +150,36 @@ export function surveyText(questions: SurveyQuestion[]): string {
     )
     .join("\n\n");
 }
+
+const FORM_METHOD: Record<SurveyQuestion["type"], string> = {
+  one: "addMultipleChoiceItem",
+  several: "addCheckboxItem",
+  text: "addParagraphTextItem",
+};
+
+/**
+ * Google Apps Script that builds the survey as a live Google Form.
+ * Every user-entered string goes through JSON.stringify, so quotes or
+ * newlines in a product name cannot break out of the script.
+ */
+export function googleFormScript(
+  title: string,
+  description: string,
+  questions: SurveyQuestion[],
+): string {
+  const items = questions.map((q) =>
+    q.type === "text"
+      ? `  form.${FORM_METHOD[q.type]}().setTitle(${JSON.stringify(q.title)});`
+      : `  form.${FORM_METHOD[q.type]}()\n    .setTitle(${JSON.stringify(q.title)})\n    .setChoiceValues(${JSON.stringify(q.options)});`,
+  );
+  return [
+    "function createSurveyForm() {",
+    `  const form = FormApp.create(${JSON.stringify(title)});`,
+    `  form.setDescription(${JSON.stringify(description)});`,
+    ...items,
+    '  Logger.log("Share with customers: " + form.getPublishedUrl());',
+    '  Logger.log("Edit the form: " + form.getEditUrl());',
+    "}",
+    "",
+  ].join("\n");
+}
