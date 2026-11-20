@@ -1897,3 +1897,59 @@ nav + .nav-label {
   cursor: pointer;
   font-weight: 600;
 }
+.setup-guide {
+  margin: 8px 12px 24px;
+  color: #c9d1e6;
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+.setup-guide p {
+  margin: 10px 0 16px;
+}
+.setup-guide strong {
+  color: #fff;
+}
+.sidebar-reset {
+  margin: 18px 12px 0;
+}
+.plain-fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.field-invalid input {
+  border-color: #d9826b;
+  background: #fff7f5;
+}
+.field-error {
+  color: #a23a22;
+  font-size: 12px;
+}
+.share-total.field-error {
+  font-weight: 600;
+}
+.review-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.import-panel summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.save-panel .error ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+.save-panel .error a {
+  color: inherit;
+}
+.heading-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}

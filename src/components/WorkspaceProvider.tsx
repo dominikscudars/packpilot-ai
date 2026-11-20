@@ -1,4 +1,10 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useState,
+  type ReactNode,
+} from "react";
 import type {
   Catalog,
   CompanyRecord,
@@ -9,6 +15,14 @@ import type {
 } from "../models/api";
 import { missing } from "../../backend/src/domain/inputs";
 import { useRequest, RequestState, message } from "./AsyncState";
+import {
+  loadDraft,
+  loadSetupRecord,
+  saveDraft,
+  saveSetupRecord,
+  scopeKey,
+  setupProblems,
+} from "../setup/setupState";
 export interface Draft {
   id: string | null;
   name: string;
@@ -17,6 +31,18 @@ export interface Draft {
 interface WorkspaceContext {
   gateway: Gateway;
   mode: "demo" | "authenticated";
+  /** Readiness, drafts and caches are scoped to this mode/user/company key. */
+  scope: string;
+  /** Setup gate: saved inputs meet the engine's minimum requirements. */
+  setupReady: boolean;
+  /** A returning demo visitor has confirmed their saved inputs this session. */
+  reviewed: boolean;
+  markReviewed: () => void;
+  /** Records successful setup for the saved scenario. */
+  completeSetup: (saved: Draft) => void;
+  /** Unsaved data-entry draft (null = none). */
+  draft: ScenarioInput | null;
+  setDraft: (input: ScenarioInput | null) => void;
   company: CompanyRecord;
   catalog: Catalog;
   baseline: Draft;
@@ -71,11 +97,33 @@ function draftFrom(catalog: Catalog): Draft {
     },
   };
 }
+/** Saved scenario a setup record points to, if it still exists and is valid. */
+function restoredSetup(
+  mode: "demo" | "authenticated",
+  scope: string,
+  catalog: Catalog,
+): Draft | null {
+  if (mode === "authenticated") {
+    // Signed-in readiness comes from the company's saved data on the server.
+    const first = catalog.scenarios[0];
+    return first && setupProblems(first.input).length === 0
+      ? { id: first.id, name: first.name, input: first.input }
+      : null;
+  }
+  const record = loadSetupRecord(scope);
+  const saved = record
+    ? catalog.scenarios.find((s) => s.id === record.scenarioId)
+    : undefined;
+  return saved && setupProblems(saved.input).length === 0
+    ? { id: saved.id, name: saved.name, input: saved.input }
+    : null;
+}
 function LoadedWorkspace({
   initial,
   company: initialCompany,
   gateway,
   mode,
+  userId,
   onCompany,
   children,
 }: {
@@ -83,12 +131,28 @@ function LoadedWorkspace({
   company: CompanyRecord;
   gateway: Gateway;
   mode: "demo" | "authenticated";
+  userId: string | null;
   onCompany: (company: CompanyRecord) => void;
   children: ReactNode;
 }) {
+  const scope = scopeKey(mode, userId, initialCompany.id);
   const [catalog, setCatalog] = useState(initial);
   const [company, setCompany] = useState(initialCompany);
-  const [baseline, setBaseline] = useState(() => draftFrom(initial));
+  const [restored] = useState(() => restoredSetup(mode, scope, initial));
+  const [setupReady, setSetupReady] = useState(restored !== null);
+  // Returning demo visitors confirm their saved inputs once per session.
+  const [reviewed, setReviewed] = useState(mode === "authenticated");
+  const [draft, setDraftState] = useState(() => loadDraft(scope));
+  const setDraft = useCallback(
+    (input: ScenarioInput | null) => {
+      setDraftState(input);
+      saveDraft(scope, input);
+    },
+    [scope],
+  );
+  const [baseline, setBaseline] = useState(
+    () => restored ?? draftFrom(initial),
+  );
   const [alternative, setAlternative] = useState<Draft>(() => ({
     ...draftFrom(initial),
     id: null,
@@ -97,6 +161,17 @@ function LoadedWorkspace({
   const value: WorkspaceContext = {
     gateway,
     mode,
+    scope,
+    setupReady,
+    reviewed,
+    markReviewed: () => setReviewed(true),
+    completeSetup(saved) {
+      if (mode === "demo" && saved.id) saveSetupRecord(scope, saved.id);
+      setSetupReady(true);
+      setReviewed(true);
+    },
+    draft,
+    setDraft,
     company,
     catalog,
     baseline,
@@ -145,6 +220,7 @@ function CompanyLoader(props: {
   company: CompanyRecord;
   gateway: Gateway;
   mode: "demo" | "authenticated";
+  userId: string | null;
   onCompany: (company: CompanyRecord) => void;
   children: ReactNode;
 }) {
@@ -199,11 +275,13 @@ export function WorkspaceProvider({
   mode,
   children,
   exit,
+  userId = null,
 }: {
   gateway: Gateway;
   mode: "demo" | "authenticated";
   children: ReactNode;
   exit: () => void;
+  userId?: string | null;
 }) {
   const [retry, setRetry] = useState(0),
     [selected, setSelected] = useState("");
@@ -264,6 +342,7 @@ export function WorkspaceProvider({
           company={company}
           gateway={gateway}
           mode={mode}
+          userId={userId}
           onCompany={(c) =>
             setOverrides((current) => ({ ...current, [c.id]: c }))
           }

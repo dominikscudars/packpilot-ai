@@ -27,7 +27,7 @@ const number = (cell: string) => {
 };
 
 /** Grams named in a header such as "1 kg", "500 g packs" or "250g". */
-function headerGrams(header: string): number | null {
+export function headerGrams(header: string): number | null {
   const m = /(\d+(?:[.,]\d+)?)\s*(kg|g)\b/i.exec(header);
   if (!m) return null;
   const value = Number(m[1].replace(",", "."));
