@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useWorkspace } from "../components/WorkspaceProvider";
-import { buildSurvey, googleFormScript, surveyText } from "../survey/questions";
+import { buildSurvey, surveyText } from "../survey/questions";
 import { parseTable, summaryText, tabulate } from "../survey/tabulate";
 import { saveSurvey } from "../survey/surveyStore";
 
@@ -11,12 +11,6 @@ const OG_TEST_PRICES: Record<number, number> = {
   500: 2.25,
   250: 1.25,
 };
-
-/** Optional deployment override for step 2; only https links are used. */
-const SCRIPT_URL = (() => {
-  const url = String(import.meta.env.VITE_GOOGLE_FORMS_SCRIPT_URL ?? "");
-  return url.startsWith("https://") ? url : "https://script.new";
-})();
 
 const sizeLabel = (grams: number) =>
   grams >= 1000 && grams % 1000 === 0 ? `${grams / 1000} kg` : `${grams} g`;
@@ -33,7 +27,6 @@ export function Survey() {
   );
   const [prices, setPrices] = useState<Record<number, string>>({});
   const [copied, setCopied] = useState(false);
-  const [scriptCopied, setScriptCopied] = useState(false);
   const [pasted, setPasted] = useState("");
   const [fileError, setFileError] = useState("");
 
@@ -49,11 +42,6 @@ export function Survey() {
     ),
   });
   const text = surveyText(questions);
-  const script = googleFormScript(
-    `${company.name} – ${product.trim() || "product"} survey`,
-    "A short survey about pack sizes and prices. It takes about 2 minutes.",
-    questions,
-  );
   const results = useMemo(() => tabulate(parseTable(pasted)), [pasted]);
 
   return (
@@ -160,42 +148,6 @@ export function Survey() {
           </ol>
         </details>
       </section>
-
-      <details className="card prepared">
-        <summary>Create a live Google Form from these questions</summary>
-        <ol>
-          <li>
-            <button
-              type="button"
-              onClick={() => {
-                void navigator.clipboard
-                  ?.writeText(script)
-                  .then(() => setScriptCopied(true))
-                  .catch(() => setScriptCopied(false));
-              }}
-            >
-              Copy Google Form generator script
-            </button>{" "}
-            <span role="status">{scriptCopied ? "Copied!" : ""}</span>
-          </li>
-          <li>
-            <a
-              className="button secondary"
-              href={SCRIPT_URL}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Open Google Apps Script (script.new)
-            </a>
-            <p className="muted">
-              Replace the sample code with the copied script, then click Run and
-              allow access when Google asks. Your form, with every question and
-              answer option above, appears in Google Forms; the share link is
-              shown in the execution log.
-            </p>
-          </li>
-        </ol>
-      </details>
 
       <section className="panel">
         <h2>2. Analyse the answers</h2>
