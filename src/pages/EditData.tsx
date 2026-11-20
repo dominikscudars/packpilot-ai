@@ -16,7 +16,7 @@ import { editable } from "../onboarding/scenarioForm";
  * Your costs and Future forecasting; nothing restarts onboarding.
  */
 export function EditData() {
-  const { baseline, setBaseline, saveScenario, mode, draft, setDraft } =
+  const { baseline, setBaseline, saveScenario, draft, setDraft } =
     useWorkspace();
   const navigate = useNavigate();
   const { hash } = useLocation();
@@ -151,7 +151,6 @@ export function EditData() {
             ) : (
               <p className="muted">
                 {dirty ? "You have unsaved changes." : "No unsaved changes."}
-                {mode === "demo" && " Demo data stays in this browser."}
               </p>
             )}
           </div>

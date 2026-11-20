@@ -232,10 +232,6 @@ export function Brief() {
                 </li>
               ))}
             </ul>
-            <p className="footnote">
-              Modelled from the inputs above with PackPilot's deterministic
-              calculations; not a quote, audit or compliance statement.
-            </p>
           </section>
         </>
       )}

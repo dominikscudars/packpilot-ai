@@ -62,9 +62,8 @@ export function Workspace() {
           <div>
             <h2>Your workspace is ready for your numbers</h2>
             <p>
-              You skipped data entry, so there are no costs or forecasts yet.
-              PackPilot never fills the gaps with sample figures: everything
-              here is calculated from what you enter.
+              Enter your production and cost data to see your costs and
+              forecasts.
             </p>
           </div>
           <Link to="/welcome" className="button primary-large">

@@ -88,7 +88,10 @@ describe("advisor grounding in the browser", () => {
     expect(used).toHaveTextContent("snapshot abcd1234, with customer survey");
     expect(used).toHaveTextContent("3 PackPilot calculations");
     expect(used).toHaveTextContent("2 web searches");
-    expect(screen.getByText(/Sources \(external, unverified\)/)).toBeVisible();
+    expect(screen.getByRole("link", { name: "A" })).toHaveAttribute(
+      "href",
+      "https://example.com/a",
+    );
   });
 
   it("marks answers based on older data and stops sending them", async () => {
