@@ -18,6 +18,8 @@ import {
   stepOf,
 } from "../onboarding/scenarioForm";
 import { AccountControls, Brand } from "../components/AppHeader";
+import { createDemoScenario } from "../../backend/src/domain/demo";
+import { EXAMPLE_PROFILE } from "../demo/apiDemo";
 
 const LAST = STEPS.length - 1;
 const INTRO = [
@@ -137,6 +139,32 @@ export function Onboarding() {
     }
   }
 
+  /** Demo only: save OG TOFU's pilot reference data (unknowns stay unknown). */
+  async function loadExample() {
+    setSaving(true);
+    setSaveError("");
+    try {
+      await saveCompany({
+        ...company,
+        name: "OG TOFU",
+        country: "Latvia",
+        industryCategory: "Plant-based food manufacturing",
+      });
+      const result = await saveScenario(
+        { id: baseline.id, name: EXAMPLE_PROFILE, input: createDemoScenario() },
+        baseline.id === null,
+      );
+      setBaseline(result);
+      completeSetup(result);
+      setDraft(null);
+      navigate("/");
+    } catch (e) {
+      setSaveError(message(e));
+    } finally {
+      setSaving(false);
+    }
+  }
+
   const stepProblems = shown.filter((p) => stepOf(p) === step);
 
   return (
@@ -158,6 +186,25 @@ export function Onboarding() {
             own numbers. It takes about three minutes; leave anything you don't
             know empty.
           </p>
+          {mode === "demo" && step === 0 && (
+            <div className="notice example-offer">
+              <p>
+                <strong>Just looking around?</strong> Load the example pilot
+                profile (OG TOFU): a Latvian tofu producer's reported figures
+                (about 1,000 kg a month, HURAKAN VAC 400, 1 kg / 500 g / 250 g
+                packs). Unknown costs stay unknown. It replaces anything in this
+                demo.
+              </p>
+              <button
+                type="button"
+                className="secondary"
+                disabled={saving}
+                onClick={() => void loadExample()}
+              >
+                Load example company (OG TOFU)
+              </button>
+            </div>
+          )}
         </div>
 
         <ol className="stepper" aria-label="Progress">

@@ -27,6 +27,8 @@ export const DEMO_KEY = "packpilot.demo.v3";
 /** Older demo keys, removed by "Reset demo" and otherwise ignored. */
 export const LEGACY_DEMO_KEYS = ["packpilot.demo.v2"];
 export const DEMO_COMPANY_ID = "demo-company";
+/** Saved-scenario name that marks the one-click OG TOFU example in the demo. */
+export const EXAMPLE_PROFILE = "Example pilot profile (OG TOFU)";
 const metadata = { id: z.string(), companyId: z.string() };
 const schemas = {
   products: productSchema,
