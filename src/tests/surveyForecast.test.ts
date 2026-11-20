@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseTable, summaryText, tabulate } from "../survey/tabulate";
-import { buildSurvey, surveyText } from "../survey/questions";
+import { buildSurvey, googleFormScript, surveyText } from "../survey/questions";
 import { buildForecast } from "../forecast/forecast";
 
 describe("survey results", () => {
@@ -76,6 +76,29 @@ describe("survey questions", () => {
       prices: { 500: 2 },
     });
     expect(qs.some((q) => q.title.startsWith("Imagine"))).toBe(false);
+  });
+});
+
+describe("Google Form script", () => {
+  it("adds every question with its type and options, escaping input", () => {
+    const qs = buildSurvey({
+      product: 'tofu "classic"',
+      brand: "OG TOFU",
+      sizes: [500, 1000],
+      prices: {},
+    });
+    const script = googleFormScript("OG TOFU survey", "Two\nlines", qs);
+    expect(script).toContain('FormApp.create("OG TOFU survey")');
+    expect(script).toContain('setDescription("Two\\nlines")');
+    expect(script).toContain('"How often do you buy tofu \\"classic\\"?"');
+    expect(script.match(/addMultipleChoiceItem/g)?.length).toBe(
+      qs.filter((q) => q.type === "one").length,
+    );
+    expect(script).toContain("addCheckboxItem");
+    expect(script).toContain("addParagraphTextItem");
+    expect(script).toContain('["500 g","1 kg","Depends on the price per kg"]');
+    // The script is valid JavaScript (Apps Script runs V8).
+    expect(() => new Function(script)).not.toThrow();
   });
 });
 
