@@ -153,6 +153,17 @@ export function project(
   return out;
 }
 
+/** The saved inputs as they would be at the end of the projection horizon. */
+export function scenarioAtEnd(input: ScenarioInput, a: Assumptions) {
+  const f = (pct: number) => new Decimal(1).plus(new Decimal(pct).div(100));
+  return adjusted(
+    input,
+    f(a.productionChangePct),
+    f(a.materialChangePct),
+    f(a.labourChangePct),
+  );
+}
+
 /** First projected month whose machine-hours exceed the available hours. */
 export function capacityLimit(input: ScenarioInput, points: Point[]) {
   const available = num(
@@ -204,6 +215,9 @@ export function fromHistory(
     euroPerKg: null,
     machineHours: null,
   }));
+  const lastKg = result.forecast.at(-1)?.totalKg;
+  const endInput =
+    lastKg === undefined ? input : adjusted(input, one, one, one, lastKg);
   for (const [i, f] of result.forecast.entries())
     points.push(
       point(
@@ -217,5 +231,7 @@ export function fromHistory(
     points,
     trendKgPerMonth: result.trendKgPerMonth,
     months: result.history.length,
+    /** The inputs at the last forecast month, for optimisation options. */
+    endInput,
   };
 }

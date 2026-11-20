@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useWorkspace } from "../components/WorkspaceProvider";
 import type { AdvisorReply } from "../advisor/server";
 import {
@@ -101,7 +101,12 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
     setTurnsState(next);
     saveTurns(scope, next);
   };
-  const [draft, setDraft] = useState("");
+  // "Research this" links from Future forecasting pre-fill the question;
+  // nothing is sent until the user asks.
+  const [params] = useSearchParams();
+  const [draft, setDraft] = useState(
+    () => params.get("q")?.slice(0, 2000) ?? "",
+  );
   const [busy, setBusy] = useState(false);
   const [error, setErrorState] = useState("");
   // Opened once live AI turns out to be unconfigured; never closed for the user.
