@@ -18,7 +18,7 @@ export function AccountControls({ compact = false }: { compact?: boolean }) {
     <div className="account-controls">
       {mode === "demo" ? (
         <span className="mode-pill" title="Everything stays in this browser">
-          <span className="live-dot" aria-hidden="true" /> Local demo
+          <span className="live-dot" aria-hidden="true" /> Demo
         </span>
       ) : null}
       <label className={`company-switch${compact ? " compact" : ""}`}>
@@ -45,7 +45,7 @@ export function AccountControls({ compact = false }: { compact?: boolean }) {
             exit();
           }}
         >
-          Reset demo
+          Start over
         </button>
       )}
       <button type="button" className="ghost" onClick={exit}>

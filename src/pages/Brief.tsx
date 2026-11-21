@@ -76,7 +76,7 @@ export function Brief() {
       ["Labour", r.totalLaborEuro, "€ per month"],
       ["Cost per kg", r.packagingEuroPerPlannedKg, "€ per kg"],
       ["Packages", r.totalPackages, "packs per month"],
-      ["Machine-hours", r.machineHours, "hours per month"],
+      ["Machine time", r.machineHours, "hours per month"],
       [],
       ["Pack size", "Packages", "€ per packed kg"],
       ...r.rows.map((row) => [
@@ -153,7 +153,7 @@ export function Brief() {
               {money(state.data.totalLaborEuro)}) ·{" "}
               {money(state.data.packagingEuroPerPlannedKg, 3)} per kg ·{" "}
               {decimalText(state.data.totalPackages, 0)} packs ·{" "}
-              {decimalText(state.data.machineHours, 1)} machine-hours.
+              {decimalText(state.data.machineHours, 1)} h machine time.
             </p>
             <table>
               <thead>

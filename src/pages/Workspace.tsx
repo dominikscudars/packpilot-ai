@@ -9,6 +9,8 @@ import { TestChange } from "../components/TestChange";
 import { DataSummary } from "../components/DataSummary";
 import { Forecasting } from "../components/Forecasting";
 import { Sensitivity } from "../components/Sensitivity";
+import { optimisations } from "../forecast/optimise";
+import { useMemo } from "react";
 import { sizeLabel } from "../onboarding/FormSections";
 import type { PackagingCostResult, ScenarioInput } from "../models/api";
 
@@ -28,7 +30,7 @@ export function Workspace() {
           <h1>Your workspace</h1>
           {baseline.name === EXAMPLE_PROFILE && (
             <p className="badge example-badge" data-testid="example-profile">
-              Example data: OG TOFU
+              Example data: OG TOFU · machine hours and maintenance estimated
             </p>
           )}
           {empty && (
@@ -62,6 +64,8 @@ export function Workspace() {
           </Link>
         </section>
       )}
+
+      {!empty && <Headline input={baseline.input} />}
 
       <div className="primary-sections">
         <section className="card section" aria-labelledby="your-costs">
@@ -100,9 +104,10 @@ export function Workspace() {
 
       {!empty && (
         <>
-          <div id="test-change" className="secondary-section">
+          <details id="test-change" className="card collapsible">
+            <summary>Test a cost change</summary>
             <TestChange />
-          </div>
+          </details>
           <DataSummary input={baseline.input} savedAt={savedAt} />
         </>
       )}
@@ -306,7 +311,51 @@ function Costs({
         </div>
       )}
       <Notes data={r} quiet />
-      <Sensitivity input={input} result={r} />
+      <details className="collapsible-inner">
+        <summary>What moves your cost most</summary>
+        <Sensitivity input={input} result={r} />
+      </details>
     </div>
+  );
+}
+
+/** The single biggest saving PackPilot can calculate from the saved data. */
+function Headline({ input }: { input: ScenarioInput }) {
+  const best = useMemo(() => {
+    const { options, base } = optimisations(input);
+    const top = options
+      .filter((o) => (o.savingEuro ?? 0) > 0.004)
+      .sort((a, b) => (b.savingEuro ?? 0) - (a.savingEuro ?? 0))[0];
+    return top ? { top, base } : null;
+  }, [input]);
+  if (!best) return null;
+  const { top, base } = best;
+  const share =
+    base.cost && base.cost > 0
+      ? Math.round(((top.savingEuro ?? 0) / base.cost) * 100)
+      : null;
+  return (
+    <section
+      className="headline"
+      aria-label="What this means"
+      data-testid="headline"
+    >
+      <div>
+        <span className="headline-label">What this means</span>
+        <p className="headline-value">
+          You could save <strong>{euro(top.savingEuro)}</strong> a month
+          {share !== null && share > 0 && <span> ({share}%)</span>}
+        </p>
+        <p className="headline-how">
+          {top.title}
+          {top.euroPerKg.from !== null &&
+            top.euroPerKg.to !== null &&
+            ` · ${euro(top.euroPerKg.from, 3)} → ${euro(top.euroPerKg.to, 3)} per kg`}
+        </p>
+      </div>
+      <a href="#optimise-title" className="button secondary">
+        See all ways to save
+      </a>
+    </section>
   );
 }

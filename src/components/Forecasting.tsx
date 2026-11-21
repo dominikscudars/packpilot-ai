@@ -108,7 +108,7 @@ export function Forecasting({ input }: { input: ScenarioInput }) {
           color={SERIES[1]}
         />
         <LineChart
-          title="Machine-hours needed per month"
+          title="Machine time per month"
           labels={active.map((p) => p.label)}
           values={active.map((p) => p.machineHours)}
           projectedFrom={projectedFrom < 0 ? active.length : projectedFrom}
@@ -223,7 +223,15 @@ function Optimise({ end, label }: { end: ScenarioInput; label: string }) {
               <p className="optimise-why">{o.why}</p>
               <div className="optimise-actions">
                 {o.testable && (
-                  <a href="#test-change" className="text-link">
+                  <a
+                    href="#test-change"
+                    className="text-link"
+                    onClick={() => {
+                      // The comparison tool sits in a collapsed section.
+                      const d = document.getElementById("test-change");
+                      if (d instanceof HTMLDetailsElement) d.open = true;
+                    }}
+                  >
                     Try it in Test a cost change
                   </a>
                 )}

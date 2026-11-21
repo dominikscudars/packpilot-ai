@@ -3841,4 +3841,101 @@ main#main {
 }
 .example-badge {
   margin: 4px 0 8px;
+  white-space: normal;
+  line-height: 1.4;
+  padding: 4px 12px;
+}
+
+/* What this means: the single biggest saving */
+.headline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+  margin-bottom: 20px;
+  padding: 22px 26px;
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, #ecfdf5, #f0fdf4);
+  border: 1px solid #bbf7d0;
+}
+.headline-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ok);
+}
+.headline-value {
+  font-size: clamp(20px, 2.4vw, 26px);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  margin: 2px 0;
+}
+.headline-value strong {
+  color: var(--ok);
+}
+.headline-value span {
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 0.75em;
+}
+.headline-how {
+  color: var(--ink-2);
+  font-size: 15px;
+}
+
+/* Collapsed secondary sections */
+.collapsible > summary,
+.collapsible-inner > summary {
+  cursor: pointer;
+  font-weight: 650;
+  color: var(--ink);
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.collapsible > summary {
+  font-size: 18px;
+}
+.collapsible-inner {
+  margin-top: 18px;
+  padding: 14px 18px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-2);
+}
+.collapsible-inner > summary {
+  font-size: 15px;
+}
+.collapsible > summary::-webkit-details-marker,
+.collapsible-inner > summary::-webkit-details-marker {
+  display: none;
+}
+.collapsible > summary::before,
+.collapsible-inner > summary::before {
+  content: "▸";
+  color: var(--muted);
+  transition: transform 0.15s;
+}
+.collapsible[open] > summary::before,
+.collapsible-inner[open] > summary::before {
+  transform: rotate(90deg);
+}
+.collapsible[open] > summary {
+  margin-bottom: 8px;
+}
+.collapsible .test-change,
+.collapsible-inner .sensitivity {
+  border: 0;
+  box-shadow: none;
+  padding: 12px 0 0;
+  margin: 0;
+  background: none;
+}
+.collapsible .test-change > h2,
+.collapsible-inner .sensitivity > h2 {
+  display: none;
 }

@@ -44,19 +44,35 @@ describe("example company", () => {
       "€286.00",
     );
     expect(screen.getByTestId("example-profile")).toHaveTextContent(
-      "Example data: OG TOFU",
+      "Example data: OG TOFU · machine hours and maintenance estimated",
     );
+    // The biggest calculated saving is stated up front.
+    expect(screen.getByTestId("headline")).toHaveTextContent(
+      "You could save €33.00 a month (12%)",
+    );
+    expect(screen.getByTestId("headline")).toHaveTextContent(
+      "Move 5% of volume from 250 g to 1 kg packs",
+    );
+    // With estimated machine hours the capacity check works and the
+    // "add for complete numbers" box is gone.
+    expect(screen.getByTestId("capacity-note")).toHaveTextContent(
+      "Capacity is enough",
+    );
+    expect(screen.queryByRole("note", { name: "What is missing" })).toBeNull();
     expect(loadSetupRecord(SCOPE)).not.toBeNull();
     const saved = JSON.parse(localStorage.getItem(DEMO_KEY) ?? "{}");
     expect(saved.company.name).toBe("OG TOFU");
-    // Unknown recurring costs stay unknown, never €0.
-    expect(
-      saved.catalog.scenarios[0].input.machines[0].maintenanceEuroPerMonth
-        .value,
-    ).toBeNull();
-    expect(
-      saved.catalog.scenarios[0].input.additionalOperatingEuroPerMonth.value,
-    ).toBeNull();
+    // Figures OG TOFU did not report are stored as labelled estimates.
+    const input = saved.catalog.scenarios[0].input;
+    for (const q of [
+      input.machines[0].availableHoursPerMonth,
+      input.machines[0].maintenanceEuroPerMonth,
+      input.additionalOperatingEuroPerMonth,
+    ]) {
+      expect(q.quality).toBe("assumption");
+      expect(q.sourceNote).toMatch(/^Estimate, not reported by OG TOFU/);
+    }
+    expect(input.machines[0].availableHoursPerMonth.value).toBe("84");
   });
 });
 

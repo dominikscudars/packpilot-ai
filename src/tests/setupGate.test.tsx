@@ -76,7 +76,7 @@ describe("onboarding gate", () => {
     expect(screen.getByRole("button", { name: "Skip for now" })).toBeEnabled();
     // Leaving stays possible: Exit demo and Reset demo remain.
     expect(screen.getByRole("button", { name: "Exit demo" })).toBeEnabled();
-    expect(screen.getByRole("button", { name: "Reset demo" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Start over" })).toBeEnabled();
   });
 
   it("does not unlock from a corrupt or mismatched setup record", async () => {
@@ -216,7 +216,7 @@ describe("edit data & costs loop", () => {
     await openDemo();
     await completeOgSetup();
     expect(localStorage.getItem(DEMO_KEY)).not.toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Reset demo" }));
+    fireEvent.click(screen.getByRole("button", { name: "Start over" }));
     expect(
       await screen.findByRole("button", { name: "Open local demo" }),
     ).toBeInTheDocument();
