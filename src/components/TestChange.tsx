@@ -247,7 +247,7 @@ export function TestChange() {
                 3,
               )}
               <tr>
-                <th scope="row">Machine-hours per month</th>
+                <th scope="row">Machine time per month</th>
                 <td>{decimalText(current.data.baseline.machineHours, 1)}</td>
                 <td>{decimalText(current.data.alternative.machineHours, 1)}</td>
               </tr>

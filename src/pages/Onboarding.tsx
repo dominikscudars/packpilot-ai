@@ -19,6 +19,7 @@ import {
 } from "../onboarding/scenarioForm";
 import { AccountControls, Brand } from "../components/AppHeader";
 import { createDemoScenario } from "../../backend/src/domain/demo";
+import { assumed } from "../../backend/src/domain/inputs";
 import { EXAMPLE_PROFILE } from "../demo/apiDemo";
 
 const LAST = STEPS.length - 1;
@@ -132,7 +133,28 @@ export function Onboarding() {
     }
   }
 
-  /** Demo only: save OG TOFU's pilot reference data (unknowns stay unknown). */
+  /**
+   * Demo only: OG TOFU's reported pilot data. The figures OG TOFU did not
+   * report (machine hours, maintenance, other running costs) are filled with
+   * estimates, stored as assumptions with a note saying so.
+   */
+  function exampleInput() {
+    const input = createDemoScenario();
+    const machine = input.machines[0];
+    machine.availableHoursPerMonth = assumed(
+      "84",
+      "Estimate, not reported by OG TOFU: about 4 hours a day on 21 working days.",
+    );
+    machine.maintenanceEuroPerMonth = assumed(
+      "20",
+      "Estimate, not reported by OG TOFU: routine servicing of one vacuum chamber machine.",
+    );
+    input.additionalOperatingEuroPerMonth = assumed(
+      "0",
+      "Estimate, not reported by OG TOFU: no other recurring packaging costs.",
+    );
+    return input;
+  }
   async function loadExample() {
     setSaving(true);
     setSaveError("");
@@ -144,7 +166,7 @@ export function Onboarding() {
         industryCategory: "Plant-based food manufacturing",
       });
       const result = await saveScenario(
-        { id: baseline.id, name: EXAMPLE_PROFILE, input: createDemoScenario() },
+        { id: baseline.id, name: EXAMPLE_PROFILE, input: exampleInput() },
         baseline.id === null,
       );
       setBaseline(result);

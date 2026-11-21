@@ -31,9 +31,14 @@ export function observations(
     total !== null &&
     Number(total) > 0
   ) {
-    const labourShare = Math.round((Number(labour) / Number(total)) * 100);
+    // Same total as the cost breakdown bar: materials, labour and any
+    // other recurring costs entered.
+    const whole =
+      Number(total) + Number(result.recurringOperatingEuroPerMonth ?? 0);
     const driver = Number(labour) >= Number(material) ? "Labour" : "Materials";
-    const share = driver === "Labour" ? labourShare : 100 - labourShare;
+    const share = Math.round(
+      (Number(driver === "Labour" ? labour : material) / whole) * 100,
+    );
     out.push({
       id: "driver",
       text: `${driver} is ${share}% of your monthly cost.`,
