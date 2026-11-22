@@ -56,7 +56,11 @@ async function openDemo(path = "/", { setup = true } = {}) {
   if (first.textContent === "Enter your data") await enterReferenceData();
   else await screen.findByTestId("operating-cost");
   const link = NAV[path];
-  if (link) fireEvent.click(navLink(link));
+  if (path === "/company") {
+    // Company details are reached from Edit data & costs.
+    fireEvent.click(navLink(/Edit data & costs/));
+    fireEvent.click(screen.getByRole("link", { name: "Company details" }));
+  } else if (link) fireEvent.click(navLink(link));
   return view;
 }
 const change = (label: string, value: string) =>
@@ -494,7 +498,8 @@ it("does not let a save from an unmounted editor overwrite a newer draft", async
       ),
     ).toBe(true),
   );
-  fireEvent.click(navLink(/Company profile/));
+  fireEvent.click(navLink(/Edit data & costs/));
+  fireEvent.click(screen.getByRole("link", { name: "Company details" }));
   await screen.findByLabelText("Company name");
   fireEvent.click(navLink(/Edit data & costs/));
   change("How many kilograms do you produce per month?", "3000");
@@ -601,9 +606,14 @@ it("asks the upgrade advisor with the current operation and shows its answer", a
         name: "How could we reduce our packaging costs?",
       }),
     );
-    expect(await screen.findByTestId("advisor-assistant")).toHaveTextContent(
-      "Keep the current machine until about 6 t a month.",
-    );
+    // An instant answer from the company's numbers comes first ...
+    expect(await screen.findByTestId("quick-answer")).toBeInTheDocument();
+    // ... then the live research answer is added below it.
+    expect(
+      await screen.findByText(
+        "Keep the current machine until about 6 t a month.",
+      ),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "Vacuum machine" }),
     ).toHaveAttribute("href", "https://example.com/vac");

@@ -107,7 +107,8 @@ describe("advisor grounding in the browser", () => {
     fireEvent.click(screen.getByRole("button", { name: "Remove" }));
     // The earlier answer stays visible, clearly marked.
     expect(screen.getByText("Offer 250 g.")).toBeInTheDocument();
-    expect(screen.getAllByTestId("older-data").length).toBe(2);
+    // Question, instant answer and live answer are all marked.
+    expect(screen.getAllByTestId("older-data").length).toBe(3);
     expect(screen.getByTestId("older-data-notice")).toBeInTheDocument();
     askQuestion("And now?");
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
@@ -160,7 +161,7 @@ describe("advisor grounding in the browser", () => {
     expect(sent.scenario).toBeUndefined();
   });
 
-  it("can cancel a running question and keeps the draft", async () => {
+  it("can cancel live research and keeps the instant answer", async () => {
     let signal: AbortSignal | undefined;
     vi.stubGlobal(
       "fetch",
@@ -178,10 +179,11 @@ describe("advisor grounding in the browser", () => {
     askQuestion("Long question");
     fireEvent.click(await screen.findByRole("button", { name: "Cancel" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Question cancelled",
+      "Live research cancelled",
     );
     expect(signal?.aborted).toBe(true);
-    expect(screen.getByLabelText("Your question")).toHaveValue("Long question");
+    // The answer from the company's own numbers stays.
+    expect(screen.getByTestId("quick-answer")).toBeInTheDocument();
   });
 
   it("shows a calm setup note and opens the examples when live AI is not configured", async () => {

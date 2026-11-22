@@ -88,7 +88,12 @@ export function EditData() {
       <header className="page-head">
         <div>
           <h1>Edit data &amp; costs</h1>
-          <p>Leave a field empty if you don't know it.</p>
+          <p>
+            Leave a field empty if you don't know it.{" "}
+            <Link to="/company" className="text-link">
+              Company details
+            </Link>
+          </p>
         </div>
         <nav className="section-jump" aria-label="Sections">
           <a href="#production">Production</a>

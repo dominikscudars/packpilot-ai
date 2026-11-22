@@ -6,7 +6,6 @@ import { money, decimalText, Notes } from "../components/ApiResults";
 import { BarList, SegmentedBar } from "../components/charts";
 import { completeness, observations } from "../insights/insights";
 import { TestChange } from "../components/TestChange";
-import { DataSummary } from "../components/DataSummary";
 import { Forecasting } from "../components/Forecasting";
 import { Sensitivity } from "../components/Sensitivity";
 import { optimisations } from "../forecast/optimise";
@@ -20,7 +19,7 @@ const euro = (v: number | null, digits = 2) =>
 
 /** Workspace: Your costs and Future forecasting, from the saved data only. */
 export function Workspace() {
-  const { onboarding, company, baseline, savedAt } = useWorkspace();
+  const { onboarding, company, baseline } = useWorkspace();
   const empty = onboarding !== "completed";
   return (
     <div className="page workspace">
@@ -108,7 +107,6 @@ export function Workspace() {
             <summary>Test a cost change</summary>
             <TestChange />
           </details>
-          <DataSummary input={baseline.input} savedAt={savedAt} />
         </>
       )}
     </div>
