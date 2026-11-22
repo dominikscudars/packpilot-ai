@@ -1,47 +1,17 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useWorkspace } from "../components/WorkspaceProvider";
-import { buildSurvey, surveyText } from "../survey/questions";
+import { SurveyBuilder } from "../survey/SurveyBuilder";
 import { parseTable, summaryText, tabulate } from "../survey/tabulate";
 import { saveSurvey } from "../survey/surveyStore";
 
-/** OG TOFU's test prices from its own consumer survey (demo only). */
-const OG_TEST_PRICES: Record<number, number> = {
-  1000: 4,
-  500: 2.25,
-  250: 1.25,
-};
-
-const sizeLabel = (grams: number) =>
-  grams >= 1000 && grams % 1000 === 0 ? `${grams / 1000} kg` : `${grams} g`;
-
 /** Tool: write a customer survey for Google Forms and analyse the answers. */
 export function Survey() {
-  const { baseline, catalog, company, mode, scope } = useWorkspace();
+  const { scope } = useWorkspace();
   const navigate = useNavigate();
-  const sizes = baseline.input.formats
-    .map((f) => Number(f.portionWeightGrams.value))
-    .filter((g) => g > 0);
-  const [product, setProduct] = useState(
-    catalog.products.at(0)?.name ?? "our product",
-  );
-  const [prices, setPrices] = useState<Record<number, string>>({});
-  const [copied, setCopied] = useState(false);
   const [pasted, setPasted] = useState("");
   const [fileError, setFileError] = useState("");
 
-  const questions = buildSurvey({
-    product,
-    brand: company.name,
-    sizes,
-    prices: Object.fromEntries(
-      Object.entries(prices).map(([g, p]) => [
-        Number(g),
-        Number(p) || undefined,
-      ]),
-    ),
-  });
-  const text = surveyText(questions);
   const results = useMemo(() => tabulate(parseTable(pasted)), [pasted]);
 
   return (
@@ -49,102 +19,14 @@ export function Survey() {
       <header className="page-heading">
         <div>
           <h1>Customer survey</h1>
-          <p>
-            Ask customers which pack sizes and prices they want, then use the
-            answers in market research.
-          </p>
+          <p>A survey written from your own numbers, in a few clicks.</p>
         </div>
       </header>
 
-      <section className="panel">
-        <h2>1. Create your survey</h2>
-        <div className="form-grid">
-          <label>
-            Product name
-            <input
-              value={product}
-              onChange={(e) => setProduct(e.target.value)}
-            />
-          </label>
-          {sizes.map((g) => (
-            <label key={g}>
-              {`Shelf price for ${sizeLabel(g)} (€, optional)`}
-              <input
-                inputMode="decimal"
-                value={prices[g] ?? ""}
-                placeholder="e.g. 2.25"
-                onChange={(e) => setPrices({ ...prices, [g]: e.target.value })}
-              />
-              {mode === "demo" &&
-                OG_TEST_PRICES[g] !== undefined &&
-                !prices[g] && (
-                  <button
-                    type="button"
-                    className="suggestion-chip"
-                    aria-label={`Use ${OG_TEST_PRICES[g]} – OG TOFU survey price for ${sizeLabel(g)}`}
-                    onClick={() =>
-                      setPrices({ ...prices, [g]: String(OG_TEST_PRICES[g]) })
-                    }
-                  >
-                    {OG_TEST_PRICES[g].toFixed(2)} – OG TOFU survey price
-                  </button>
-                )}
-            </label>
-          ))}
-        </div>
-
-        <ol className="survey-preview" data-testid="survey-questions">
-          {questions.map((q) => (
-            <li key={q.title}>
-              <strong>{q.title}</strong>
-              {q.options.length > 0 && <span> — {q.options.join(" / ")}</span>}
-            </li>
-          ))}
-        </ol>
-        <div className="step-actions">
-          <button
-            type="button"
-            onClick={() => {
-              void navigator.clipboard
-                ?.writeText(text)
-                .then(() => setCopied(true))
-                .catch(() => setCopied(false));
-            }}
-          >
-            {copied ? "Copied" : "Copy questions"}
-          </button>
-          <a
-            className="button secondary"
-            href="https://forms.new"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Open a new Google Form
-          </a>
-        </div>
-        <details className="reorder-more">
-          <summary>How to make the Google Form (about 2 minutes)</summary>
-          <ol>
-            <li>
-              Click “Open a new Google Form” (sign in with Google if asked).
-            </li>
-            <li>
-              For each question, add it with the type shown in brackets, then
-              paste the answer options; Google Forms turns each line into one
-              option.
-            </li>
-            <li>Click “Send” and share the link with your customers.</li>
-            <li>
-              When answers are in, open the “Responses” tab, click “Link to
-              Sheets”, then copy the whole sheet (or download it as .csv) and
-              paste it below.
-            </li>
-          </ol>
-        </details>
-      </section>
+      <SurveyBuilder />
 
       <section className="panel">
-        <h2>2. Analyse the answers</h2>
+        <h2>Analyse the answers</h2>
         <label>
           Paste your responses (copied from Google Sheets or Excel)
           <textarea
