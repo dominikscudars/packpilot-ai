@@ -36,31 +36,61 @@ export function Forecasting({ input }: { input: ScenarioInput }) {
   const end = active.at(-1)!;
   const endInput = useMemo(() => scenarioAtEnd(input, a), [input, a]);
 
-  const field = (key: keyof Assumptions, label: string, hint: string) => (
-    <label className="assumption">
-      <span>{label}</span>
+  // What the user is typing, per field, so a box can be cleared and
+  // retyped freely; the projection updates whenever the text is a number.
+  const [typing, setTyping] = useState<
+    Partial<Record<keyof Assumptions, string>>
+  >({});
+  const clamp = (v: number) => Math.max(-90, Math.min(500, v));
+  const setValue = (key: keyof Assumptions, v: number) => {
+    setA({ ...a, [key]: clamp(v) });
+    setTyping({ ...typing, [key]: undefined });
+  };
+  const field = (
+    key: keyof Assumptions,
+    label: string,
+    hint: string,
+    presets: number[],
+  ) => (
+    <div className="assumption">
+      <label htmlFor={`assume-${key}`}>{label}</label>
       <span className="input-suffix">
         <input
-          type="number"
+          id={`assume-${key}`}
+          type="text"
+          inputMode="decimal"
+          autoComplete="off"
           aria-label={label}
           aria-description={hint ? `Percent, ${hint}` : "Percent"}
-          inputMode="decimal"
-          step={5}
-          min={-90}
-          max={500}
-          value={a[key]}
+          value={typing[key] ?? String(a[key])}
+          onFocus={(e) => e.currentTarget.select()}
           onChange={(e) => {
-            const v = Number(e.target.value);
-            setA({
-              ...a,
-              [key]: Number.isFinite(v) ? Math.max(-90, Math.min(500, v)) : 0,
-            });
+            const raw = e.target.value;
+            setTyping({ ...typing, [key]: raw });
+            const text = raw.trim().replace(",", ".").replace(/^\+/, "");
+            if (text === "" || text === "-") setA({ ...a, [key]: 0 });
+            else if (/^-?\d+(\.\d+)?$/.test(text))
+              setA({ ...a, [key]: clamp(Number(text)) });
           }}
+          onBlur={() => setTyping({ ...typing, [key]: undefined })}
         />
         <span aria-hidden="true">%</span>
       </span>
+      <div className="presets" role="group" aria-label={`${label} presets`}>
+        {presets.map((v) => (
+          <button
+            key={v}
+            type="button"
+            className="preset"
+            aria-pressed={a[key] === v}
+            onClick={() => setValue(key, v)}
+          >
+            {v > 0 ? `+${v}` : v === 0 ? "0" : `−${-v}`}%
+          </button>
+        ))}
+      </div>
       {hint && <small>{hint}</small>}
-    </label>
+    </div>
   );
 
   return (
@@ -70,9 +100,10 @@ export function Forecasting({ input }: { input: ScenarioInput }) {
           "productionChangePct",
           "Production change",
           `in ${a.months} months`,
+          [0, 25, 50, 100],
         )}
-        {field("materialChangePct", "Material price change", "")}
-        {field("labourChangePct", "Labour cost change", "")}
+        {field("materialChangePct", "Material price change", "", [-10, 0, 10])}
+        {field("labourChangePct", "Labour cost change", "", [-10, 0, 10])}
         <label className="assumption">
           <span>Horizon</span>
           <select

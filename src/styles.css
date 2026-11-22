@@ -4070,3 +4070,37 @@ main#main {
 .brief-headline strong {
   color: var(--ok);
 }
+
+/* Forecast assumptions: type freely or tap a common value */
+.assumption > label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.preset {
+  min-height: 30px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--surface);
+  color: var(--ink-2);
+  border: 1px solid var(--border-strong);
+  box-shadow: none;
+}
+.preset:hover:not(:disabled) {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: none;
+}
+.preset[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
