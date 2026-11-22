@@ -8,6 +8,7 @@ import {
   type AnswerBasis,
 } from "../advisor/snapshot";
 import { ReportText } from "../components/ReportText";
+import { quickAnswer } from "../advisor/quickAnswer";
 import { useRequest } from "../components/AsyncState";
 import { money } from "../components/ApiResults";
 import { clearSurvey, loadSurvey } from "../survey/surveyStore";
@@ -24,6 +25,8 @@ interface Turn {
   basis?: AnswerBasis;
   /** A hand-researched example shown without calling the AI service. */
   prepared?: boolean;
+  /** Calculated by PackPilot itself because live research was unavailable. */
+  quick?: boolean;
   /** The company data and survey this turn was based on. */
   context: string;
 }
@@ -141,14 +144,35 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
           // Only turns based on the current data; prepared examples and
           // answers about older data are not part of the conversation.
           messages: next
-            .filter((t) => !t.prepared && t.context === context)
+            .filter((t) => !t.prepared && !t.quick && t.context === context)
             .slice(-12)
             .map(({ role, content }) => ({ role, content })),
         }),
       });
       const body = (await response.json().catch(() => null)) as
         (AdvisorReply & { error?: string; code?: AdvisorErrorCode }) | null;
-      if (!response.ok || !body || typeof body.reply !== "string")
+      if (!response.ok || !body || typeof body.reply !== "string") {
+        // Live research is busy, out of free quota or not set up: answer
+        // from PackPilot's own calculations instead of showing an error.
+        const quick =
+          hasData && body?.code !== "invalid" && body?.code !== "too_large"
+            ? quickAnswer(baseline.input)
+            : null;
+        if (quick) {
+          setTurns([
+            ...next,
+            { role: "assistant", content: quick, quick: true, context },
+          ]);
+          // Still say why live research didn't answer.
+          setError(
+            explain(
+              body?.code,
+              body?.error ??
+                `The advisor is unavailable (HTTP ${response.status}).`,
+            ),
+          );
+          return;
+        }
         throw new Error(
           explain(
             body?.code,
@@ -156,6 +180,7 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
               `The advisor is unavailable (HTTP ${response.status}).`,
           ),
         );
+      }
       setTurns([
         ...next,
         {
@@ -167,6 +192,22 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
         },
       ]);
     } catch (e) {
+      // A network failure (fetch throws a TypeError; not a cancel or a
+      // timeout) also gets the calculated answer.
+      const quick =
+        !abort.signal.aborted && hasData && e instanceof TypeError
+          ? quickAnswer(baseline.input)
+          : null;
+      if (quick) {
+        setTurns([
+          ...next,
+          { role: "assistant", content: quick, quick: true, context },
+        ]);
+        setError(
+          "Couldn't reach live research. Check your connection and try again.",
+        );
+        return;
+      }
       setError(
         abort.signal.aborted
           ? abort.signal.reason === "timeout"
@@ -289,6 +330,11 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
                   {stale && (
                     <span className="badge badge-warn" data-testid="older-data">
                       Based on older data
+                    </span>
+                  )}
+                  {turn.quick && (
+                    <span className="badge" data-testid="quick-answer">
+                      Quick answer from your numbers · live research is busy
                     </span>
                   )}
                   {turn.prepared && turn.role === "assistant" && (
