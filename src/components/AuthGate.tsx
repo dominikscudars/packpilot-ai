@@ -346,14 +346,6 @@ export function AuthGate({
         >
           Open local demo
         </button>
-        <button
-          className="secondary"
-          onClick={() =>
-            setPlans({ greeting: "PackPilot plans", after: "back" })
-          }
-        >
-          See plans
-        </button>
       </section>
     </main>
   );

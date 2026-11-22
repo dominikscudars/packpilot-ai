@@ -126,7 +126,16 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
     const text = question.trim();
     if (!text || busy) return;
     const next: Turn[] = [...turns, { role: "user", content: text, context }];
-    setTurns(next);
+    // The first question about the current data gets an instant answer from
+    // PackPilot's own numbers; live web research is added below when ready.
+    const instant =
+      hasData && !turns.some((t) => t.quick && t.context === context)
+        ? quickAnswer(baseline.input)
+        : null;
+    const shown: Turn[] = instant
+      ? [...next, { role: "assistant", content: instant, quick: true, context }]
+      : next;
+    setTurns(shown);
     setDraft("");
     setError("");
     setBusy(true);
@@ -152,6 +161,18 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
       const body = (await response.json().catch(() => null)) as
         (AdvisorReply & { error?: string; code?: AdvisorErrorCode }) | null;
       if (!response.ok || !body || typeof body.reply !== "string") {
+        // The instant answer already stands; just say why live research
+        // didn't add to it.
+        if (instant) {
+          setError(
+            explain(
+              body?.code,
+              body?.error ??
+                `The advisor is unavailable (HTTP ${response.status}).`,
+            ),
+          );
+          return;
+        }
         // Live research is busy, out of free quota or not set up: answer
         // from PackPilot's own calculations instead of showing an error.
         const quick =
@@ -182,7 +203,7 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
         );
       }
       setTurns([
-        ...next,
+        ...shown,
         {
           role: "assistant",
           content: body.reply,
@@ -192,6 +213,16 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
         },
       ]);
     } catch (e) {
+      if (instant) {
+        setError(
+          abort.signal.aborted
+            ? abort.signal.reason === "timeout"
+              ? "Live research took too long; the answer above is from your numbers."
+              : "Live research cancelled."
+            : "Couldn't reach live research. The answer above is from your numbers.",
+        );
+        return;
+      }
       // A network failure (fetch throws a TypeError; not a cancel or a
       // timeout) also gets the calculated answer.
       const quick =
@@ -334,7 +365,7 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
                   )}
                   {turn.quick && (
                     <span className="badge" data-testid="quick-answer">
-                      Quick answer from your numbers · live research is busy
+                      Instant answer from your numbers
                     </span>
                   )}
                   {turn.prepared && turn.role === "assistant" && (
@@ -382,8 +413,8 @@ export function Advisor({ fetcher = fetch }: { fetcher?: typeof fetch }) {
             <div className="advisor-busy" role="status">
               <span className="spinner" aria-hidden="true" />
               <span className="muted">
-                Researching and testing options with PackPilot's calculations. A
-                full answer can take one to three minutes…
+                Now researching prices, suppliers and machines on the web. This
+                can take a minute or two…
               </span>
               <button
                 type="button"

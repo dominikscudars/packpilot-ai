@@ -98,17 +98,9 @@ it("shows sign-up failures from the account provider", async () => {
   );
 });
 
-it("lets visitors look at plans and come back to sign in", () => {
+it("keeps the start screen to sign in and the demo (no plans button)", () => {
   mount();
-  fireEvent.click(screen.getByRole("button", { name: "See plans" }));
-  expect(
-    screen.getByRole("heading", { name: "PackPilot plans" }),
-  ).toBeInTheDocument();
-  fireEvent.click(
-    screen.getAllByRole("button", { name: "Preview checkout" })[1],
-  );
-  fireEvent.click(screen.getByRole("button", { name: "Confirm (simulated)" }));
-  fireEvent.click(screen.getByRole("button", { name: "Back to sign in" }));
+  expect(screen.queryByRole("button", { name: "See plans" })).toBeNull();
   expect(
     screen.getByRole("button", { name: "Open local demo" }),
   ).toBeInTheDocument();

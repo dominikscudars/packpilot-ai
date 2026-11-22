@@ -61,7 +61,7 @@ export function quickAnswer(input: ScenarioInput): string | null {
   lines.push("", "## Next steps");
   lines.push(
     "- Try the change that suits you in **Test a cost change** on your workspace.",
-    "- Ask again later for live web research on prices, suppliers and machines.",
+    "- Live web research on prices, suppliers and machines follows when it is available.",
   );
   return lines.join("\n");
 }

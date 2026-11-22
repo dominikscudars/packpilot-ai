@@ -4063,3 +4063,10 @@ main#main {
     max-width: 100%;
   }
 }
+.brief-headline {
+  font-size: 18px;
+  margin-bottom: 10px;
+}
+.brief-headline strong {
+  color: var(--ok);
+}

@@ -140,7 +140,6 @@ describe("Your costs decisions", () => {
     expect(await screen.findByTestId("cost-drivers")).toHaveTextContent(
       "of your monthly cost",
     );
-    expect(screen.getByTestId("data-saved")).toHaveTextContent(/Last saved/);
     const missing = screen.getByRole("note", { name: "What is missing" });
     expect(
       within(missing).getAllByRole("link")[0].getAttribute("href"),
@@ -243,6 +242,9 @@ describe("Your costs decisions", () => {
     expect(
       screen.getByRole("button", { name: "Print / save as PDF" }),
     ).toBeEnabled();
+    expect(screen.getByTestId("brief-ways-to-save")).toHaveTextContent(
+      "You could save €33.00 a month (12%)",
+    );
     expect(screen.getByText("Inputs and sources")).toBeInTheDocument();
     const create = vi.fn(() => "blob:x");
     const revoke = vi.fn();

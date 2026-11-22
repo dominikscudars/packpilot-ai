@@ -6,6 +6,8 @@ import { useRequest, RequestState } from "../components/AsyncState";
 import { money, decimalText } from "../components/ApiResults";
 import { completeness, observations } from "../insights/insights";
 import { toCsv } from "../insights/export";
+import { optimisations } from "../forecast/optimise";
+import type { ScenarioInput } from "../models/api";
 
 const sizeLabel = (grams: number) =>
   grams >= 1000 && grams % 1000 === 0 ? `${grams / 1000} kg` : `${grams} g`;
@@ -186,6 +188,7 @@ export function Brief() {
               ))}
             </ul>
           </section>
+          <WaysToSave input={input} />
           {comparison && (
             <section className="panel" data-testid="brief-comparison">
               <h2>Evaluated change</h2>
@@ -237,5 +240,72 @@ export function Brief() {
         </>
       )}
     </article>
+  );
+}
+
+/** The biggest calculated saving and the top ideas, for the handout. */
+function WaysToSave({ input }: { input: ScenarioInput }) {
+  let options: ReturnType<typeof optimisations>["options"] = [];
+  let cost: number | null = null;
+  try {
+    const r = optimisations(input);
+    options = r.options;
+    cost = r.base.cost;
+  } catch {
+    return null;
+  }
+  const saving = options
+    .filter((o) => (o.savingEuro ?? 0) > 0.004)
+    .sort((a, b) => (b.savingEuro ?? 0) - (a.savingEuro ?? 0));
+  if (!options.length) return null;
+  const top = saving[0];
+  const fmt = (v: number, digits = 2) => money(String(v), digits);
+  return (
+    <section className="panel brief-save" data-testid="brief-ways-to-save">
+      <h2>Ways to save</h2>
+      {top && (
+        <p className="brief-headline">
+          You could save <strong>{fmt(top.savingEuro ?? 0)} a month</strong>
+          {cost
+            ? ` (${Math.round(((top.savingEuro ?? 0) / cost) * 100)}%)`
+            : ""}{" "}
+          — {top.title}.
+        </p>
+      )}
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Idea</th>
+            <th scope="col">Saving per month</th>
+            <th scope="col">Cost per kg</th>
+            <th scope="col">Machine time</th>
+          </tr>
+        </thead>
+        <tbody>
+          {options.slice(0, 4).map((o) => (
+            <tr key={o.id}>
+              <th scope="row">{o.title}</th>
+              <td>
+                {(o.savingEuro ?? 0) > 0.004 ? fmt(o.savingEuro ?? 0) : "—"}
+              </td>
+              <td>
+                {o.euroPerKg.from !== null &&
+                o.euroPerKg.to !== null &&
+                o.euroPerKg.to < o.euroPerKg.from - 0.0004
+                  ? `${fmt(o.euroPerKg.from, 3)} → ${fmt(o.euroPerKg.to, 3)}`
+                  : "—"}
+              </td>
+              <td>
+                {o.machineHours.from !== null &&
+                o.machineHours.to !== null &&
+                o.machineHours.from - o.machineHours.to > 0.05
+                  ? `−${(o.machineHours.from - o.machineHours.to).toFixed(1)} h`
+                  : "—"}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
   );
 }
