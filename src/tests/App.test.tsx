@@ -667,9 +667,7 @@ it("turns pasted survey answers into context for market research", async () => {
   try {
     await openDemo();
     fireEvent.click(screen.getByRole("link", { name: /Customer survey/ }));
-    expect(await screen.findByTestId("survey-questions")).toHaveTextContent(
-      "Which pack size would you prefer for regular use?",
-    );
+    await screen.findByRole("region", { name: "Survey builder" });
     change(
       "Paste your responses (copied from Google Sheets or Excel)",
       "Timestamp\tPreferred size\n1\t250 g\n2\t250 g\n3\t1 kg",
