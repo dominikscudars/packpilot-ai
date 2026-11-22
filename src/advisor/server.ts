@@ -392,8 +392,66 @@ export interface GeminiModels {
     ): Promise<
       Pick<GenerateContentResponse, "candidates" | "functionCalls" | "text">
     >;
+    /** Models this API key can use (used to find free backup models). */
+    list?(params?: {
+      config?: { pageSize?: number };
+    }): Promise<AsyncIterable<{ name?: string; supportedActions?: string[] }>>;
   };
 }
+
+/** How many discovered backup models to try after the configured ones. */
+const MAX_DISCOVERED = 3;
+/** Don't start another model with less time than this left. */
+const MIN_ATTEMPT_MS = 45_000;
+let discovered: { at: number; ids: string[] } | null = null;
+
+/**
+ * Free backup models: asks Google which Flash models this key can use, so
+ * the list never goes stale when models are renamed or retired. Lighter
+ * "lite" models come first (separate free quota, usually less busy), then
+ * newer versions. Cached for ten minutes per server instance.
+ */
+export async function backupModels(
+  ai: GeminiModels,
+  exclude: string[],
+): Promise<string[]> {
+  if (!ai.models.list) return [];
+  if (!discovered || Date.now() - discovered.at > 10 * 60_000) {
+    const ids: string[] = [];
+    try {
+      const pager = await ai.models.list({ config: { pageSize: 100 } });
+      for await (const m of pager) {
+        const id = (m.name ?? "").replace(/^models\//, "");
+        if (!/flash/i.test(id)) continue;
+        if (/(image|tts|audio|live|embed|vision|exp)/i.test(id)) continue;
+        if (
+          m.supportedActions &&
+          !m.supportedActions.includes("generateContent")
+        )
+          continue;
+        ids.push(id);
+      }
+    } catch {
+      return [];
+    }
+    const version = (id: string) =>
+      Number(/(\d+(?:\.\d+)?)/.exec(id)?.[1] ?? 0);
+    ids.sort(
+      (a, b) =>
+        Number(/lite/i.test(b)) - Number(/lite/i.test(a)) ||
+        Number(/preview/i.test(a)) - Number(/preview/i.test(b)) ||
+        version(b) - version(a),
+    );
+    discovered = { at: Date.now(), ids };
+  }
+  return discovered.ids
+    .filter((id) => !exclude.includes(id))
+    .slice(0, MAX_DISCOVERED);
+}
+/** Test hook: forget discovered models. */
+export const resetBackupModels = () => {
+  discovered = null;
+};
 
 type Source = AnswerSource;
 
@@ -639,20 +697,27 @@ export async function handleAdvisorRequest(
         },
       },
     });
-  // A backup model is tried only when GEMINI_FALLBACK_MODEL is set.
+  // The configured model first, then GEMINI_FALLBACK_MODEL if set, then
+  // free backup models discovered from the key's own model list.
   const models = [options.model || DEFAULT_GEMINI_MODEL, options.fallbackModel]
     .filter((m): m is string => Boolean(m))
     .filter((m, i, all) => all.indexOf(m) === i);
   const deadline = Date.now() + DEADLINE_MS;
   let firstError: unknown;
-  for (const model of models) {
+  let searched = false;
+  for (let i = 0; i < models.length; i++) {
+    if (i > 0 && deadline - Date.now() < MIN_ATTEMPT_MS) break;
     try {
-      return json(200, await advise(client, model, parsed.data, deadline));
+      return json(200, await advise(client, models[i], parsed.data, deadline));
     } catch (e) {
       firstError ??= e;
-      // Try the backup model only when the main one is missing or overloaded.
+      // Move on only when the model is missing, busy or out of free quota.
       if (!(e instanceof ApiError) || ![404, 429, 500, 503].includes(e.status))
         break;
+      if (i === models.length - 1 && !searched) {
+        searched = true;
+        models.push(...(await backupModels(client, models)));
+      }
     }
   }
   // Report the main model's failure: it is the one to fix.
