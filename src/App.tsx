@@ -6,7 +6,13 @@ import {
 } from "./components/WorkspaceProvider";
 import { AuthGate, type AppServices } from "./components/AuthGate";
 import { AppHeader } from "./components/AppHeader";
-import { Workspace, EmptyState } from "./pages/Workspace";
+import {
+  Workspace,
+  WorkspaceCosts,
+  WorkspaceForecast,
+  WorkspaceSavings,
+  EmptyState,
+} from "./pages/Workspace";
 import { Onboarding } from "./pages/Onboarding";
 import { EditData } from "./pages/EditData";
 import { CompanyProfile } from "./pages/CompanyProfile";
@@ -104,7 +110,9 @@ function Shell() {
               </NeedsData>
             }
           />
-          <Route path="/forecast" element={<Navigate to="/" replace />} />
+          <Route path="/costs" element={<WorkspaceCosts />} />
+          <Route path="/forecast" element={<WorkspaceForecast />} />
+          <Route path="/savings" element={<WorkspaceSavings />} />
           <Route path="/simulator" element={<Navigate to="/" replace />} />
           <Route path="/inventory" element={<Navigate to="/" replace />} />
           <Route

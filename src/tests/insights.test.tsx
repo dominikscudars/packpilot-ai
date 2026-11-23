@@ -9,7 +9,8 @@ import {
 import { MemoryRouter } from "react-router-dom";
 import type { ReactNode } from "react";
 import App from "../App";
-import { enterReferenceData, navLink } from "./journey";
+import { DEMO_KEY } from "../demo/apiDemo";
+import { enterReferenceData, navLink, openTab } from "./journey";
 import { createDemoScenario } from "../../backend/src/domain/demo";
 import { calculatePackaging } from "../../backend/src/calculation-engine/packaging";
 import { assumed } from "../../backend/src/domain/inputs";
@@ -137,6 +138,7 @@ async function openReference(path = "/") {
 describe("Your costs decisions", () => {
   it("shows observations, sources and the missing-input action list", async () => {
     await openReference();
+    openTab("Costs");
     expect(await screen.findByTestId("cost-drivers")).toHaveTextContent(
       "of your monthly cost",
     );
@@ -148,6 +150,7 @@ describe("Your costs decisions", () => {
 
   it("shows sensitivity bars and hides break-even until it can be calculated", async () => {
     await openReference();
+    openTab("Costs");
     const panel = await screen.findByRole("region", {
       name: "Sensitivity and break-even",
     });
@@ -163,6 +166,7 @@ describe("Your costs decisions", () => {
 
   it("compares a material change without saving it, hiding savings when costs are incomplete", async () => {
     await openReference();
+    openTab("Savings");
     const panel = await screen.findByRole("region", {
       name: "Test a cost change",
     });
@@ -181,12 +185,14 @@ describe("Your costs decisions", () => {
     // Maintenance and other recurring costs are unknown: no savings claim.
     expect(within(panel).getByTestId("no-savings")).toBeInTheDocument();
     // The saved data is unchanged until the change is applied.
-    expect(screen.getByTestId("operating-cost")).toHaveTextContent("€286.00");
+    expect(localStorage.getItem(DEMO_KEY) ?? "").not.toContain('"0.08"');
     fireEvent.click(
       within(panel).getByRole("button", {
         name: "Apply this change to my data",
       }),
     );
+    await screen.findByText("Change applied to your saved data.");
+    openTab("Overview");
     await waitFor(() =>
       expect(screen.getByTestId("operating-cost")).toHaveTextContent("€294.00"),
     );
@@ -207,6 +213,8 @@ describe("Your costs decisions", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Save changes & update costs" }),
     );
+    await screen.findByTestId("operating-cost");
+    openTab("Savings");
     const panel = await screen.findByRole("region", {
       name: "Test a cost change",
     });

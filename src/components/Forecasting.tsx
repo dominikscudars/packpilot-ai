@@ -194,7 +194,13 @@ const money = (v: number, digits = 2) =>
   `€${v.toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits })}`;
 
 /** Concrete ways to optimise the projected period, each recalculated by the engine. */
-function Optimise({ end, label }: { end: ScenarioInput; label: string }) {
+export function Optimise({
+  end,
+  label,
+}: {
+  end: ScenarioInput;
+  label: string;
+}) {
   const { options } = useMemo(() => optimisations(end), [end]);
   if (!options.length) return null;
 
@@ -254,17 +260,9 @@ function Optimise({ end, label }: { end: ScenarioInput; label: string }) {
               <p className="optimise-why">{o.why}</p>
               <div className="optimise-actions">
                 {o.testable && (
-                  <a
-                    href="#test-change"
-                    className="text-link"
-                    onClick={() => {
-                      // The comparison tool sits in a collapsed section.
-                      const d = document.getElementById("test-change");
-                      if (d instanceof HTMLDetailsElement) d.open = true;
-                    }}
-                  >
+                  <Link to="/savings#test-change" className="text-link">
                     Try it in Test a cost change
-                  </a>
+                  </Link>
                 )}
                 <Link
                   to={`/research?q=${encodeURIComponent(o.research)}`}

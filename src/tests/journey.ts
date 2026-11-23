@@ -71,3 +71,12 @@ export const NAV: Record<string, RegExp> = {
   "/brief": /Decision brief/,
   "/data": /Edit data & costs/,
 };
+
+/** Opens a workspace tab: Overview, Costs, Forecast or Savings. */
+export function openTab(name: "Overview" | "Costs" | "Forecast" | "Savings") {
+  fireEvent.click(
+    within(
+      screen.getByRole("navigation", { name: "Workspace sections" }),
+    ).getByRole("link", { name }),
+  );
+}

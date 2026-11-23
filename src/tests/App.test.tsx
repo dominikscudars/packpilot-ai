@@ -14,7 +14,7 @@ import App from "../App";
 import type { AppServices } from "../components/AuthGate";
 import { authFixture, apiFixture, json } from "./integrationFixture";
 import { DEMO_KEY } from "../demo/apiDemo";
-import { NAV, enterReferenceData, navLink } from "./journey";
+import { NAV, enterReferenceData, navLink, openTab } from "./journey";
 vi.mock("recharts", () => ({
   ResponsiveContainer: ({ children }: { children: ReactNode }) => (
     <div>{children}</div>
@@ -82,6 +82,8 @@ it("requires explicit demo entry, preserves exact reference results and persists
   );
   expect(screen.getByTestId("cost-per-kg")).toHaveTextContent("€0.286");
   expect(screen.getByTestId("total-packages")).toHaveTextContent("1,300");
+  openTab("Costs");
+  await screen.findByTestId("cost-drivers");
   for (const [format, count, total, perKg] of [
     ["1 kg", "800", "€176.00", "€0.220"],
     ["500 g", "300", "€66.00", "€0.440"],
@@ -571,12 +573,9 @@ it("onboarding starts empty, shows no results, validates each step and opens the
   expect(await screen.findByTestId("operating-cost")).toHaveTextContent(
     "€60.00",
   );
-  expect(
-    screen.getByRole("heading", { name: "Your costs" }),
-  ).toBeInTheDocument();
-  expect(
-    screen.getByRole("heading", { name: "Future forecasting" }),
-  ).toBeInTheDocument();
+  const tabs = screen.getByRole("navigation", { name: "Workspace sections" });
+  for (const name of ["Overview", "Costs", "Forecast", "Savings"])
+    expect(within(tabs).getByRole("link", { name })).toBeInTheDocument();
   view.unmount();
   // Returning visitors with completed data go straight to their workspace.
   await openDemo("/", { setup: false });
@@ -710,20 +709,28 @@ it("turns pasted survey answers into context for market research", async () => {
     vi.unstubAllGlobals();
   }
 });
-it("the workspace leads with Your costs and Future forecasting, and offers market research", async () => {
+it("the workspace is split into Overview, Costs, Forecast and Savings tabs", async () => {
   await openDemo();
-  expect(screen.getByRole("heading", { name: "Your costs" })).toBeVisible();
+  // Overview: the saving and the key numbers, with a card per tab.
+  expect(screen.getByTestId("headline")).toHaveTextContent("You could save");
   expect(
-    screen.getByRole("heading", { name: "Future forecasting" }),
-  ).toBeVisible();
-  // No grid of unrelated feature cards.
+    screen.getByRole("link", { name: /What drives your cost/ }),
+  ).toHaveAttribute("href", "/costs");
   expect(screen.queryByRole("region", { name: "Next actions" })).toBeNull();
-  expect(screen.getByTestId("cost-drivers")).toHaveTextContent(
+  openTab("Costs");
+  expect(
+    await screen.findByRole("heading", { name: "Your costs" }),
+  ).toBeVisible();
+  expect(await screen.findByTestId("cost-drivers")).toHaveTextContent(
     "Labour is 68% of your monthly cost",
   );
   expect(screen.getByTestId("cost-drivers")).toHaveTextContent(
     "250 g packs cost 4.0× more per kg than 1 kg packs",
   );
+  openTab("Forecast");
+  expect(
+    await screen.findByRole("heading", { name: "Future forecasting" }),
+  ).toBeVisible();
   // A projection only follows stated assumptions; none means no change.
   expect(screen.getByTestId("projection-summary")).toHaveTextContent(
     "No change set",

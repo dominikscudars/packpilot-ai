@@ -61,6 +61,8 @@ const TOOLS = [
   { path: "/company", name: "Company profile" },
 ] as const;
 
+const WORKSPACE_TABS = ["/costs", "/forecast", "/savings"];
+
 /** Workspace header: two primary destinations, research, and a tools menu. */
 export function AppHeader() {
   const { pathname } = useLocation();
@@ -75,7 +77,13 @@ export function AppHeader() {
       <div className="app-header-inner">
         <Brand />
         <nav aria-label="Main navigation" className="main-nav">
-          <NavLink to="/" end>
+          <NavLink
+            to="/"
+            end
+            className={({ isActive }) =>
+              isActive || WORKSPACE_TABS.includes(pathname) ? "active" : ""
+            }
+          >
             Workspace
           </NavLink>
           <NavLink to="/research">Market research</NavLink>
