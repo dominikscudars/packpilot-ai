@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useWorkspace } from "../components/WorkspaceProvider";
+import { OperationProfile, Suppliers } from "../components/ProfileSections";
+import { EmptyState } from "./Workspace";
 import { RequestState, message } from "../components/AsyncState";
 import { QuantityField as Q } from "../components/QuantityField";
 import type { RecordOf, Resources } from "../models/api";
@@ -94,18 +96,46 @@ function ProductEditor({
   );
 }
 export function CompanyProfile() {
-  const { company, catalog, saveCompany } = useWorkspace();
+  const { company, catalog, saveCompany, baseline, onboarding, savedAt } =
+    useWorkspace();
   const [draft, setDraft] = useState(company);
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [notice, setNotice] = useState("");
   return (
-    <>
-      <header className="page-heading">
-        <div>
-          <h1>Company profile</h1>
+    <div className="page profile">
+      <header className="page-head profile-head">
+        <div className="profile-id">
+          <span className="profile-avatar" aria-hidden="true">
+            {(company.name || "?")
+              .split(/\s+/)
+              .map((w) => w[0])
+              .join("")
+              .slice(0, 2)
+              .toUpperCase()}
+          </span>
+          <div>
+            <span className="eyebrow">Company profile</span>
+            <h1>{company.name}</h1>
+            <p>
+              {[company.country, company.industryCategory]
+                .filter(Boolean)
+                .join(" · ") || "Add your country and industry below."}
+            </p>
+          </div>
         </div>
       </header>
+      {onboarding === "completed" ? (
+        <OperationProfile input={baseline.input} savedAt={savedAt} />
+      ) : (
+        <section className="card section">
+          <EmptyState
+            title="No operation data yet"
+            text="Enter your production and costs to see your pack sizes, packing line and data quality here."
+          />
+        </section>
+      )}
+      <Suppliers />
       <section className="panel">
         <h2>Company details</h2>
         {company.membershipRole !== "owner" && (
@@ -180,10 +210,7 @@ export function CompanyProfile() {
       {catalog.products.length
         ? catalog.products.map((p) => <ProductEditor key={p.id} record={p} />)
         : null}
-      {catalog.formats.length +
-        catalog.machines.length +
-        catalog.suppliers.length >
-        0 && (
+      {catalog.formats.length + catalog.machines.length > 0 && (
         <section className="panel">
           <h2>Packaging catalog</h2>
 
@@ -224,15 +251,8 @@ export function CompanyProfile() {
             </p>
           ))}
           {!catalog.machines.length && <p>No machines recorded.</p>}
-          <h3>Suppliers</h3>
-          {catalog.suppliers.map((s) => (
-            <p key={s.id}>
-              {s.name} · {s.contactInformation ?? "Contact information unknown"}
-            </p>
-          ))}
-          {!catalog.suppliers.length && <p>No suppliers recorded.</p>}
         </section>
       )}
-    </>
+    </div>
   );
 }

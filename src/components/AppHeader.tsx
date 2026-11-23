@@ -58,6 +58,7 @@ export function AccountControls({ compact = false }: { compact?: boolean }) {
 const TOOLS = [
   { path: "/survey", name: "Customer survey" },
   { path: "/brief", name: "Decision brief" },
+  { path: "/company", name: "Company profile" },
 ] as const;
 
 /** Workspace header: two primary destinations, research, and a tools menu. */
