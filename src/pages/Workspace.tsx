@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useWorkspace } from "../components/WorkspaceProvider";
 import { EXAMPLE_PROFILE } from "../demo/apiDemo";
 import { useRequest, RequestState } from "../components/AsyncState";
@@ -6,10 +6,10 @@ import { money, decimalText, Notes } from "../components/ApiResults";
 import { BarList, SegmentedBar } from "../components/charts";
 import { completeness, observations } from "../insights/insights";
 import { TestChange } from "../components/TestChange";
-import { Forecasting } from "../components/Forecasting";
+import { Forecasting, Optimise } from "../components/Forecasting";
 import { Sensitivity } from "../components/Sensitivity";
 import { optimisations } from "../forecast/optimise";
-import { useMemo } from "react";
+import { useEffect, useMemo, type ReactNode } from "react";
 import { sizeLabel } from "../onboarding/FormSections";
 import type { PackagingCostResult, ScenarioInput } from "../models/api";
 
@@ -17,8 +17,16 @@ const n = (v: string | null) => (v === null ? null : Number(v));
 const euro = (v: number | null, digits = 2) =>
   v === null ? "Unknown" : money(String(v), digits);
 
-/** Workspace: Your costs and Future forecasting, from the saved data only. */
-export function Workspace() {
+type Tab = "overview" | "costs" | "forecast" | "savings";
+const TABS: { id: Tab; to: string; label: string }[] = [
+  { id: "overview", to: "/", label: "Overview" },
+  { id: "costs", to: "/costs", label: "Costs" },
+  { id: "forecast", to: "/forecast", label: "Forecast" },
+  { id: "savings", to: "/savings", label: "Savings" },
+];
+
+/** Shared header and tabs for the workspace pages. */
+function WorkspaceShell({ tab, children }: { tab: Tab; children: ReactNode }) {
   const { onboarding, company, baseline } = useWorkspace();
   const empty = onboarding !== "completed";
   return (
@@ -48,8 +56,19 @@ export function Workspace() {
           </Link>
         </div>
       </header>
-
-      {empty && (
+      <nav className="subnav" aria-label="Workspace sections">
+        {TABS.map((t) => (
+          <Link
+            key={t.id}
+            to={t.to}
+            className={t.id === tab ? "active" : undefined}
+            aria-current={t.id === tab ? "page" : undefined}
+          >
+            {t.label}
+          </Link>
+        ))}
+      </nav>
+      {empty && tab === "overview" && (
         <section className="empty-hero" aria-label="Enter your data">
           <div>
             <h2>Your workspace is ready for your numbers</h2>
@@ -63,53 +82,185 @@ export function Workspace() {
           </Link>
         </section>
       )}
+      {children}
+    </div>
+  );
+}
 
-      {!empty && <Headline input={baseline.input} />}
+const EMPTY: Record<Tab, { title: string; text: string }> = {
+  overview: {
+    title: "No costs yet",
+    text: "Enter your monthly production, pack sizes, packaging prices and labour to see your monthly packaging cost, cost per kilogram and what drives it.",
+  },
+  costs: {
+    title: "No costs yet",
+    text: "Enter your monthly production, pack sizes, packaging prices and labour to see your monthly packaging cost, cost per kilogram and what drives it.",
+  },
+  forecast: {
+    title: "No forecast yet",
+    text: "Once your data is saved, see how cost, volume and machine capacity change if production grows or prices move.",
+  },
+  savings: {
+    title: "No savings ideas yet",
+    text: "Once your data is saved, PackPilot calculates which changes would save the most.",
+  },
+};
 
-      <div className="primary-sections">
+/** Shows the empty state until the company's data exists. */
+function WithData({ tab, children }: { tab: Tab; children: ReactNode }) {
+  const { onboarding } = useWorkspace();
+  if (onboarding === "completed") return <>{children}</>;
+  return (
+    <section className="card section" aria-label={EMPTY[tab].title}>
+      <EmptyState {...EMPTY[tab]} />
+    </section>
+  );
+}
+
+/** Overview: the saving, the key numbers and a summary of each tab. */
+export function Workspace() {
+  const { baseline } = useWorkspace();
+  return (
+    <WorkspaceShell tab="overview">
+      <WithData tab="overview">
+        <Headline input={baseline.input} />
+        <Overview input={baseline.input} />
+      </WithData>
+    </WorkspaceShell>
+  );
+}
+
+/** Costs: breakdown, pack sizes, drivers and sensitivity. */
+export function WorkspaceCosts() {
+  const { baseline, onboarding } = useWorkspace();
+  return (
+    <WorkspaceShell tab="costs">
+      <WithData tab="costs">
         <section className="card section" aria-labelledby="your-costs">
           <div className="section-head">
             <h2 id="your-costs">Your costs</h2>
-            {!empty && (
+            {onboarding === "completed" && (
               <Link to="/data#costs" className="text-link">
                 Edit costs
               </Link>
             )}
           </div>
-          {empty ? (
-            <EmptyState
-              title="No costs yet"
-              text="Enter your monthly production, pack sizes, packaging prices and labour to see your monthly packaging cost, cost per kilogram and what drives it."
-            />
-          ) : (
-            <CostsSection input={baseline.input} />
-          )}
+          <CostsSection input={baseline.input} />
         </section>
+      </WithData>
+    </WorkspaceShell>
+  );
+}
 
+/** Forecast: what happens if production or prices change. */
+export function WorkspaceForecast() {
+  const { baseline } = useWorkspace();
+  return (
+    <WorkspaceShell tab="forecast">
+      <WithData tab="forecast">
         <section className="card section" aria-labelledby="forecasting">
           <div className="section-head">
             <h2 id="forecasting">Future forecasting</h2>
           </div>
-          {empty ? (
-            <EmptyState
-              title="No forecast yet"
-              text="Once your data is saved, see how cost, volume and machine capacity change if production grows or prices move — and add your sales history for a trend."
-            />
-          ) : (
-            <Forecasting input={baseline.input} />
-          )}
+          <Forecasting input={baseline.input} />
         </section>
-      </div>
+      </WithData>
+    </WorkspaceShell>
+  );
+}
 
-      {!empty && (
-        <>
-          <details id="test-change" className="card collapsible">
-            <summary>Test a cost change</summary>
-            <TestChange />
-          </details>
-        </>
-      )}
-    </div>
+/** Savings: ways to optimise today's costs and the comparison tool. */
+export function WorkspaceSavings() {
+  const { baseline } = useWorkspace();
+  const { hash } = useLocation();
+  useEffect(() => {
+    if (hash)
+      document
+        .getElementById(hash.slice(1))
+        ?.scrollIntoView?.({ block: "start" });
+  }, [hash]);
+  return (
+    <WorkspaceShell tab="savings">
+      <WithData tab="savings">
+        <section className="card section" aria-labelledby="optimise-title">
+          <Optimise end={baseline.input} label="Now" />
+        </section>
+        <div id="test-change">
+          <TestChange />
+        </div>
+      </WithData>
+    </WorkspaceShell>
+  );
+}
+
+/** One engine run, shown as the KPI row plus a summary card per tab. */
+function Overview({ input }: { input: ScenarioInput }) {
+  const { gateway } = useWorkspace();
+  const state = useRequest(JSON.stringify(input), () =>
+    gateway.calculate(input),
+  );
+  const options = useMemo(() => {
+    try {
+      return optimisations(input)
+        .options.filter((o) => (o.savingEuro ?? 0) > 0.004)
+        .sort((a, b) => (b.savingEuro ?? 0) - (a.savingEuro ?? 0))
+        .slice(0, 3);
+    } catch {
+      return [];
+    }
+  }, [input]);
+  if (!state.data)
+    return (
+      <RequestState
+        error={state.error}
+        onRetry={state.retry}
+        guidance={state.guidance}
+        loading={!state.error}
+      />
+    );
+  const r = state.data;
+  const notes = observations(r, input);
+  return (
+    <>
+      <section className="card section" aria-label="Key numbers">
+        <Kpis result={r} />
+      </section>
+      <div className="overview-grid">
+        <Link to="/costs" className="overview-card">
+          <span className="overview-label">Costs</span>
+          <strong>What drives your cost</strong>
+          <p>
+            {notes[0]?.text ?? "See your cost breakdown by type and pack size."}
+          </p>
+          <span className="overview-more">See cost breakdown →</span>
+        </Link>
+        <Link to="/forecast" className="overview-card">
+          <span className="overview-label">Forecast</span>
+          <strong>What if production grows?</strong>
+          <p>
+            See how cost, cost per kg and machine time change if production or
+            prices move.
+          </p>
+          <span className="overview-more">Open forecast →</span>
+        </Link>
+        <Link to="/savings" className="overview-card">
+          <span className="overview-label">Savings</span>
+          <strong>Top ways to save</strong>
+          {options.length ? (
+            <ul>
+              {options.map((o) => (
+                <li key={o.id}>
+                  {o.title}: <b>{euro(o.savingEuro)}</b> a month
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>Ideas to cut cost per kg and machine time.</p>
+          )}
+          <span className="overview-more">See all ways to save →</span>
+        </Link>
+      </div>
+    </>
   );
 }
 
@@ -155,54 +306,11 @@ function Costs({
   const material = n(r.totalMaterialEuro);
   const labour = n(r.totalLaborEuro);
   const recurring = n(r.recurringOperatingEuroPerMonth);
-  const usage = r.machineUsage.find((m) => m.utilizationPercent !== null);
   const notes = observations(r, input);
   const missing = completeness(input);
   return (
     <div className="costs">
-      <div className="kpis">
-        <div className="kpi kpi-hero">
-          <span className="kpi-label">Packaging cost per month</span>
-          <strong data-testid="operating-cost">
-            {money(r.totalPackagingOperatingEuro)}
-          </strong>
-          <span className="kpi-sub">
-            materials + labour
-            {recurring !== null && recurring > 0
-              ? ` · ${euro(recurring)} other recurring`
-              : ""}
-          </span>
-        </div>
-        <div className="kpi">
-          <span className="kpi-label">Cost per kg</span>
-          <strong data-testid="cost-per-kg">
-            {money(r.packagingEuroPerPlannedKg, 3)}
-          </strong>
-          <span className="kpi-sub">
-            of {decimalText(r.monthlyProductionKg, 0)} kg produced
-          </span>
-        </div>
-        <div className="kpi">
-          <span className="kpi-label">Packs per month</span>
-          <strong data-testid="total-packages">
-            {decimalText(r.totalPackages, 0)}
-          </strong>
-          <span className="kpi-sub">bags and labels used</span>
-        </div>
-        <div className="kpi">
-          <span className="kpi-label">Machine time</span>
-          <strong data-testid="machine-hours">
-            {r.machineHours === null
-              ? "Unknown"
-              : `${decimalText(r.machineHours, 1)} h`}
-          </strong>
-          <span className="kpi-sub">
-            {usage?.utilizationPercent
-              ? `${Math.round(Number(usage.utilizationPercent))}% of available hours`
-              : "per month"}
-          </span>
-        </div>
-      </div>
+      <Kpis result={r} />
 
       <div className="costs-grid">
         <div>
@@ -351,9 +459,60 @@ function Headline({ input }: { input: ScenarioInput }) {
             ` · ${euro(top.euroPerKg.from, 3)} → ${euro(top.euroPerKg.to, 3)} per kg`}
         </p>
       </div>
-      <a href="#optimise-title" className="button secondary">
+      <Link to="/savings" className="button secondary">
         See all ways to save
-      </a>
+      </Link>
     </section>
+  );
+}
+
+/** The four headline numbers, shared by Overview and Costs. */
+function Kpis({ result: r }: { result: PackagingCostResult }) {
+  const recurring = n(r.recurringOperatingEuroPerMonth);
+  const usage = r.machineUsage.find((m) => m.utilizationPercent !== null);
+  return (
+    <div className="kpis">
+      <div className="kpi kpi-hero">
+        <span className="kpi-label">Packaging cost per month</span>
+        <strong data-testid="operating-cost">
+          {money(r.totalPackagingOperatingEuro)}
+        </strong>
+        <span className="kpi-sub">
+          materials + labour
+          {recurring !== null && recurring > 0
+            ? ` · ${euro(recurring)} other recurring`
+            : ""}
+        </span>
+      </div>
+      <div className="kpi">
+        <span className="kpi-label">Cost per kg</span>
+        <strong data-testid="cost-per-kg">
+          {money(r.packagingEuroPerPlannedKg, 3)}
+        </strong>
+        <span className="kpi-sub">
+          of {decimalText(r.monthlyProductionKg, 0)} kg produced
+        </span>
+      </div>
+      <div className="kpi">
+        <span className="kpi-label">Packs per month</span>
+        <strong data-testid="total-packages">
+          {decimalText(r.totalPackages, 0)}
+        </strong>
+        <span className="kpi-sub">bags and labels used</span>
+      </div>
+      <div className="kpi">
+        <span className="kpi-label">Machine time</span>
+        <strong data-testid="machine-hours">
+          {r.machineHours === null
+            ? "Unknown"
+            : `${decimalText(r.machineHours, 1)} h`}
+        </strong>
+        <span className="kpi-sub">
+          {usage?.utilizationPercent
+            ? `${Math.round(Number(usage.utilizationPercent))}% of available hours`
+            : "per month"}
+        </span>
+      </div>
+    </div>
   );
 }

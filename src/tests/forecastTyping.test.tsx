@@ -3,7 +3,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import App from "../App";
-import { enterReferenceData } from "./journey";
+import { enterReferenceData, openTab } from "./journey";
 
 it("lets you type forecast changes freely and tap common values", async () => {
   const user = userEvent.setup();
@@ -16,6 +16,7 @@ it("lets you type forecast changes freely and tap common values", async () => {
   );
   fireEvent.click(screen.getByRole("button", { name: "Open local demo" }));
   await enterReferenceData();
+  openTab("Forecast");
   const production = screen.getByRole("textbox", { name: "Production change" });
   // The old box snapped back to 0 when cleared; now it can be emptied and retyped.
   await user.clear(production);

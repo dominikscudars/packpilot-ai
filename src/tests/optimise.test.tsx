@@ -6,7 +6,7 @@ import { createDemoScenario } from "../../backend/src/domain/demo";
 import { assumed, missing } from "../../backend/src/domain/inputs";
 import { optimisations } from "../forecast/optimise";
 import { NO_CHANGE, scenarioAtEnd } from "../forecast/projection";
-import { enterReferenceData, type } from "./journey";
+import { enterReferenceData, openTab, type } from "./journey";
 
 describe("ways to optimise the forecast", () => {
   it("recalculates each option with the engine on the projected figures", () => {
@@ -76,7 +76,8 @@ describe("optimise panel in the workspace", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Open local demo" }));
     await enterReferenceData();
-    const panel = screen.getByTestId("optimise");
+    openTab("Forecast");
+    const panel = await screen.findByTestId("optimise");
     expect(panel).toHaveTextContent("Ways to optimise your costs");
     expect(within(panel).getByTestId("option-mix")).toHaveTextContent(
       "−€33.00 a month",

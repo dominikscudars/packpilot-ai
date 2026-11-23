@@ -12,7 +12,7 @@ import {
   scopeKey,
 } from "../setup/setupState";
 import { NO_CHANGE, capacityLimit, project } from "../forecast/projection";
-import { enterReferenceData, navLink, type } from "./journey";
+import { enterReferenceData, navLink, openTab, type } from "./journey";
 
 const SCOPE = scopeKey("demo", null, DEMO_COMPANY_ID);
 function mount(path: string) {
@@ -55,10 +55,13 @@ describe("example company", () => {
     );
     // With estimated machine hours the capacity check works and the
     // "add for complete numbers" box is gone.
-    expect(screen.getByTestId("capacity-note")).toHaveTextContent(
+    openTab("Costs");
+    await screen.findByRole("heading", { name: "Your costs" });
+    expect(screen.queryByRole("note", { name: "What is missing" })).toBeNull();
+    openTab("Forecast");
+    expect(await screen.findByTestId("capacity-note")).toHaveTextContent(
       "Capacity is enough",
     );
-    expect(screen.queryByRole("note", { name: "What is missing" })).toBeNull();
     expect(loadSetupRecord(SCOPE)).not.toBeNull();
     const saved = JSON.parse(localStorage.getItem(DEMO_KEY) ?? "{}");
     expect(saved.company.name).toBe("OG TOFU");
@@ -81,13 +84,14 @@ describe("skip journey", () => {
     await open();
     fireEvent.click(screen.getByRole("button", { name: "Skip for now" }));
     await screen.findByRole("heading", { name: "Your workspace" });
-    expect(screen.getByRole("heading", { name: "Your costs" })).toBeVisible();
-    expect(
-      screen.getByRole("heading", { name: "Future forecasting" }),
-    ).toBeVisible();
     expect(screen.getByText("No costs yet")).toBeInTheDocument();
-    expect(screen.getByText("No forecast yet")).toBeInTheDocument();
     expect(screen.queryByTestId("operating-cost")).toBeNull();
+    openTab("Forecast");
+    expect(await screen.findByText("No forecast yet")).toBeInTheDocument();
+    openTab("Savings");
+    expect(await screen.findByText("No savings ideas yet")).toBeInTheDocument();
+    openTab("Overview");
+    await screen.findByText("No costs yet");
     // No euro amount or OG TOFU figure anywhere in the workspace.
     expect(screen.getByRole("main").textContent).not.toMatch(/€\s?\d/);
     expect(screen.getByRole("main").textContent).not.toMatch(/OG TOFU/);
@@ -157,6 +161,7 @@ describe("editing updates costs and forecasts", () => {
   it("recalculates Your costs and the projection after saving an edit", async () => {
     await open("/");
     await enterReferenceData();
+    openTab("Forecast");
     type("Production change", "100");
     expect(screen.getByTestId("projection-summary")).toHaveTextContent(
       "€572 a month (now €286)",
@@ -170,7 +175,8 @@ describe("editing updates costs and forecasts", () => {
       expect(screen.getByTestId("operating-cost")).toHaveTextContent("€294.00"),
     );
     // The forecast now starts from the edited data.
-    expect(screen.getByTestId("projection-summary")).toHaveTextContent(
+    openTab("Forecast");
+    expect(await screen.findByTestId("projection-summary")).toHaveTextContent(
       "No change set: €294 a month",
     );
   });
