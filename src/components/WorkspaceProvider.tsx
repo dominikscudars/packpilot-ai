@@ -80,6 +80,11 @@ interface WorkspaceContext {
     record: RecordOf<Resources[K]>,
     value: Resources[K],
   ) => Promise<void>;
+  /** Creates a new company record (e.g. a supplier). */
+  addRecord: <K extends keyof Resources>(
+    resource: K,
+    value: Resources[K],
+  ) => Promise<void>;
 }
 const Context = createContext<WorkspaceContext | null>(null);
 function draftFrom(catalog: Catalog): Draft {
@@ -242,6 +247,13 @@ function LoadedWorkspace({
         [resource]: current[resource].map((r) =>
           r.id === saved.id ? saved : r,
         ),
+      }));
+    },
+    async addRecord(resource, data) {
+      const saved = await gateway.save(company.id, resource, null, data);
+      setCatalog((current) => ({
+        ...current,
+        [resource]: [...current[resource], saved],
       }));
     },
     async saveScenario(draft, asNew) {
